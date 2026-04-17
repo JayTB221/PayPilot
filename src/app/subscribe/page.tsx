@@ -1,12 +1,33 @@
+'use client'
+
+import { useSearchParams } from 'next/navigation'
+import { useState, Suspense } from 'react'
 import Link from 'next/link'
 import { logOut } from '@/app/actions/auth'
 
-interface Props {
-  searchParams: Promise<{ new?: string }>
-}
+function SubscribeContent() {
+  const searchParams = useSearchParams()
+  const isNew = searchParams.get('new') === '1'
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-export default async function SubscribePage({ searchParams }: Props) {
-  const { new: isNew } = await searchParams
+  async function handleCheckout() {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch('/api/stripe/checkout', { method: 'POST' })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        setError('Could not start checkout. Please try again.')
+        setLoading(false)
+      }
+    } catch {
+      setError('Network error — please try again.')
+      setLoading(false)
+    }
+  }
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
@@ -44,13 +65,19 @@ export default async function SubscribePage({ searchParams }: Props) {
             </ul>
           </div>
 
-          {/* Stripe checkout button added in Step 6 */}
+          {error && (
+            <p className="mt-4 rounded-lg bg-red-50 border border-red-200 px-4 py-2 text-sm text-red-700">
+              {error}
+            </p>
+          )}
+
           <button
-            disabled
+            onClick={handleCheckout}
+            disabled={loading}
             className="mt-6 w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold
-                       text-white opacity-60 cursor-not-allowed"
+                       text-white hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            Continue to payment (coming in Step 6)
+            {loading ? 'Redirecting to Stripe…' : 'Start subscription — $400 NZD/mo'}
           </button>
 
           <form action={logOut} className="mt-4">
@@ -64,5 +91,13 @@ export default async function SubscribePage({ searchParams }: Props) {
         </div>
       </div>
     </main>
+  )
+}
+
+export default function SubscribePage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><p className="text-gray-400">Loading…</p></div>}>
+      <SubscribeContent />
+    </Suspense>
   )
 }

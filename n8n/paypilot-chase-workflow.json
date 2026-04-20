@@ -1,5 +1,5 @@
 {
-  "name": "PayPilot — Invoice Chase Workflow",
+  "name": "PayPilot — Invoice Chase Workflow (Claude)",
   "nodes": [
     {
       "parameters": {
@@ -17,7 +17,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Parse and validate invoice data from PayPilot\nconst body = $input.first().json.body || $input.first().json;\nconst invoice = body.invoice;\nconst tenantId = body.tenantId;\n\nif (!invoice || !tenantId) {\n  throw new Error('Missing invoice or tenantId');\n}\n\n// Determine chase tone based on days overdue\nlet tone;\nlet urgency;\nif (invoice.days_overdue <= 14) {\n  tone = 'friendly';\n  urgency = 'gentle reminder';\n} else if (invoice.days_overdue <= 30) {\n  tone = 'firm';\n  urgency = 'follow-up';\n} else {\n  tone = 'urgent';\n  urgency = 'final notice';\n}\n\n// Format currency\nconst amount = new Intl.NumberFormat('en-NZ', {\n  style: 'currency',\n  currency: invoice.currency || 'NZD'\n}).format(invoice.amount_owed);\n\nreturn [{\n  json: {\n    invoice,\n    tenantId,\n    tone,\n    urgency,\n    amountFormatted: amount,\n    debtorName: invoice.debtor_name,\n    debtorEmail: invoice.debtor_email,\n    debtorPhone: invoice.debtor_phone || null,\n    invoiceNumber: invoice.invoice_number || `INV-${invoice.id.slice(0,8)}`,\n    daysOverdue: invoice.days_overdue,\n    dueDate: invoice.due_date,\n    timesChased: invoice.times_chased\n  }\n}];"
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst invoice = body.invoice;\nconst tenantId = body.tenantId;\n\nif (!invoice || !tenantId) throw new Error('Missing invoice or tenantId');\n\nlet tone, urgency;\nif (invoice.days_overdue <= 14) {\n  tone = 'friendly'; urgency = 'gentle reminder';\n} else if (invoice.days_overdue <= 30) {\n  tone = 'firm'; urgency = 'follow-up';\n} else {\n  tone = 'urgent'; urgency = 'final notice';\n}\n\nconst amount = new Intl.NumberFormat('en-NZ', {\n  style: 'currency', currency: invoice.currency || 'NZD'\n}).format(invoice.amount_owed);\n\nreturn [{ json: {\n  invoice, tenantId, tone, urgency,\n  amountFormatted: amount,\n  debtorName: invoice.debtor_name,\n  debtorEmail: invoice.debtor_email,\n  debtorPhone: invoice.debtor_phone || null,\n  invoiceNumber: invoice.invoice_number || `INV-${invoice.id.slice(0,8)}`,\n  daysOverdue: invoice.days_overdue,\n  dueDate: invoice.due_date,\n  timesChased: invoice.times_chased\n} }];"
       },
       "id": "prepare-data",
       "name": "Prepare Invoice Data",
@@ -27,41 +27,30 @@
     },
     {
       "parameters": {
-        "resource": "chat",
-        "operation": "complete",
-        "model": "gpt-4o",
-        "messages": {
-          "values": [
-            {
-              "role": "system",
-              "content": "You are a professional accounts receivable assistant for a New Zealand business. Write concise, professional invoice follow-up emails. Be polite but clear. Do not use filler words. Do not add subject lines — just the body text. Do not use markdown. Keep it under 150 words."
-            },
-            {
-              "role": "user",
-              "content": "=Write a {{ $json.tone }} payment reminder email for:\n- Client: {{ $json.debtorName }}\n- Invoice: {{ $json.invoiceNumber }}\n- Amount: {{ $json.amountFormatted }}\n- Days overdue: {{ $json.daysOverdue }}\n- Due date: {{ $json.dueDate }}\n- Times previously contacted: {{ $json.timesChased }}\n\nThis is a {{ $json.urgency }}. {{ $json.timesChased === 0 ? 'This is the first contact.' : `We have contacted them ${$json.timesChased} time(s) before.` }}\n\nEnd with a call to action to pay immediately or get in touch to discuss."
-            }
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "={{ $vars.ANTHROPIC_API_KEY }}" },
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type", "value": "application/json" }
           ]
         },
-        "options": {
-          "temperature": 0.7,
-          "maxTokens": 300
-        }
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={\n  \"model\": \"claude-opus-4-6\",\n  \"max_tokens\": 400,\n  \"system\": \"You are a professional accounts receivable assistant for a New Zealand business. Write concise, professional invoice follow-up emails. Be polite but clear. Do not use filler words. Do not add a subject line — write only the email body. Do not use markdown. Keep it under 150 words.\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Write a {{ $json.tone }} payment reminder email for:\\n- Client: {{ $json.debtorName }}\\n- Invoice: {{ $json.invoiceNumber }}\\n- Amount: {{ $json.amountFormatted }}\\n- Days overdue: {{ $json.daysOverdue }}\\n- Due date: {{ $json.dueDate }}\\n- Times previously contacted: {{ $json.timesChased }}\\n\\nThis is a {{ $json.urgency }}. {{ $json.timesChased === 0 ? 'This is the first contact.' : 'We have contacted them ' + $json.timesChased + ' time(s) before.' }}\\n\\nEnd with a clear call to action to pay immediately or get in touch.\"\n    }\n  ]\n}"
       },
       "id": "generate-email",
-      "name": "Generate Email with AI",
-      "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 1.4,
-      "position": [680, 200],
-      "credentials": {
-        "openAiApi": {
-          "id": "openai-creds",
-          "name": "OpenAI API"
-        }
-      }
+      "name": "Generate Email with Claude",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 200]
     },
     {
       "parameters": {
-        "jsCode": "// Merge AI email body back with invoice data\nconst emailBody = $input.first().json.message.content;\nconst invoiceData = $('Prepare Invoice Data').first().json;\n\n// Build subject line based on tone\nlet subject;\nif (invoiceData.daysOverdue <= 14) {\n  subject = `Friendly reminder: ${invoiceData.invoiceNumber} — ${invoiceData.amountFormatted} outstanding`;\n} else if (invoiceData.daysOverdue <= 30) {\n  subject = `Payment required: ${invoiceData.invoiceNumber} — ${invoiceData.amountFormatted}`;\n} else {\n  subject = `URGENT: ${invoiceData.invoiceNumber} is ${invoiceData.daysOverdue} days overdue — ${invoiceData.amountFormatted}`;\n}\n\nreturn [{\n  json: {\n    ...invoiceData,\n    emailSubject: subject,\n    emailBody: emailBody.trim()\n  }\n}];"
+        "jsCode": "const response = $input.first().json;\nconst emailBody = response.content[0].text;\nconst invoiceData = $('Prepare Invoice Data').first().json;\n\nlet subject;\nif (invoiceData.daysOverdue <= 14) {\n  subject = `Friendly reminder: ${invoiceData.invoiceNumber} — ${invoiceData.amountFormatted} outstanding`;\n} else if (invoiceData.daysOverdue <= 30) {\n  subject = `Payment required: ${invoiceData.invoiceNumber} — ${invoiceData.amountFormatted}`;\n} else {\n  subject = `URGENT: ${invoiceData.invoiceNumber} is ${invoiceData.daysOverdue} days overdue — ${invoiceData.amountFormatted}`;\n}\n\nreturn [{ json: { ...invoiceData, emailSubject: subject, emailBody: emailBody.trim() } }];"
       },
       "id": "build-email",
       "name": "Build Final Email",
@@ -84,10 +73,7 @@
       "typeVersion": 2.1,
       "position": [1120, 200],
       "credentials": {
-        "smtp": {
-          "id": "smtp-creds",
-          "name": "SMTP"
-        }
+        "smtp": { "id": "smtp-creds", "name": "SMTP" }
       }
     },
     {
@@ -109,65 +95,58 @@
     },
     {
       "parameters": {
-        "resource": "chat",
-        "operation": "complete",
-        "model": "gpt-4o",
-        "messages": {
-          "values": [
-            {
-              "role": "system",
-              "content": "Write a very short SMS payment reminder. Maximum 160 characters. Professional but direct. No emojis."
-            },
-            {
-              "role": "user",
-              "content": "=SMS reminder for {{ $json.debtorName }}: invoice {{ $json.invoiceNumber }} for {{ $json.amountFormatted }} is {{ $json.daysOverdue }} days overdue. Include a request to pay or get in touch."
-            }
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "={{ $vars.ANTHROPIC_API_KEY }}" },
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type", "value": "application/json" }
           ]
         },
-        "options": {
-          "maxTokens": 100
-        }
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={\n  \"model\": \"claude-opus-4-6\",\n  \"max_tokens\": 100,\n  \"system\": \"Write a very short SMS payment reminder. Maximum 160 characters total. Professional but direct. No emojis. No line breaks.\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"SMS reminder for {{ $('Prepare Invoice Data').first().json.debtorName }}: invoice {{ $('Prepare Invoice Data').first().json.invoiceNumber }} for {{ $('Prepare Invoice Data').first().json.amountFormatted }} is {{ $('Prepare Invoice Data').first().json.daysOverdue }} days overdue. Ask them to pay or get in touch urgently.\"\n    }\n  ]\n}"
       },
       "id": "generate-sms",
-      "name": "Generate SMS with AI",
-      "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 1.4,
-      "position": [1340, 300],
-      "credentials": {
-        "openAiApi": {
-          "id": "openai-creds",
-          "name": "OpenAI API"
-        }
-      }
+      "name": "Generate SMS with Claude",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst smsText = response.content[0].text.trim().slice(0, 160);\nreturn [{ json: { smsText } }];"
+      },
+      "id": "parse-sms",
+      "name": "Parse SMS Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1480, 300]
     },
     {
       "parameters": {
         "accountSid": "={{ $vars.TWILIO_ACCOUNT_SID }}",
         "from": "={{ $vars.TWILIO_FROM_NUMBER }}",
         "to": "={{ $('Prepare Invoice Data').first().json.debtorPhone }}",
-        "message": "={{ $json.message.content }}"
+        "message": "={{ $json.smsText }}"
       },
       "id": "send-sms",
       "name": "Send SMS via Twilio",
       "type": "n8n-nodes-base.twilio",
       "typeVersion": 1,
-      "position": [1560, 300],
+      "position": [1620, 300],
       "credentials": {
-        "twilioApi": {
-          "id": "twilio-creds",
-          "name": "Twilio API"
-        }
+        "twilioApi": { "id": "twilio-creds", "name": "Twilio API" }
       }
     },
     {
       "parameters": {
         "operation": "insert",
-        "schema": {
-          "value": "public"
-        },
-        "table": {
-          "value": "chase_log"
-        },
+        "schema": { "value": "public" },
+        "table": { "value": "chase_log" },
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
@@ -188,21 +167,14 @@
       "typeVersion": 2.5,
       "position": [1340, 480],
       "credentials": {
-        "postgres": {
-          "id": "supabase-postgres",
-          "name": "Supabase Postgres"
-        }
+        "postgres": { "id": "supabase-postgres", "name": "Supabase Postgres" }
       }
     },
     {
       "parameters": {
         "operation": "update",
-        "schema": {
-          "value": "public"
-        },
-        "table": {
-          "value": "invoices"
-        },
+        "schema": { "value": "public" },
+        "table": { "value": "invoices" },
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
@@ -213,10 +185,7 @@
         },
         "where": {
           "values": [
-            {
-              "column": "id",
-              "value": "={{ $('Prepare Invoice Data').first().json.invoice.id }}"
-            }
+            { "column": "id", "value": "={{ $('Prepare Invoice Data').first().json.invoice.id }}" }
           ]
         }
       },
@@ -226,10 +195,7 @@
       "typeVersion": 2.5,
       "position": [1560, 480],
       "credentials": {
-        "postgres": {
-          "id": "supabase-postgres",
-          "name": "Supabase Postgres"
-        }
+        "postgres": { "id": "supabase-postgres", "name": "Supabase Postgres" }
       }
     },
     {
@@ -246,58 +212,45 @@
   ],
   "connections": {
     "Webhook Trigger": {
-      "main": [
-        [{ "node": "Prepare Invoice Data", "type": "main", "index": 0 }]
-      ]
+      "main": [[{ "node": "Prepare Invoice Data", "type": "main", "index": 0 }]]
     },
     "Prepare Invoice Data": {
-      "main": [
-        [
-          { "node": "Generate Email with AI", "type": "main", "index": 0 },
-          { "node": "Send SMS?", "type": "main", "index": 0 }
-        ]
-      ]
+      "main": [[
+        { "node": "Generate Email with Claude", "type": "main", "index": 0 },
+        { "node": "Send SMS?", "type": "main", "index": 0 }
+      ]]
     },
-    "Generate Email with AI": {
-      "main": [
-        [{ "node": "Build Final Email", "type": "main", "index": 0 }]
-      ]
+    "Generate Email with Claude": {
+      "main": [[{ "node": "Build Final Email", "type": "main", "index": 0 }]]
     },
     "Build Final Email": {
-      "main": [
-        [
-          { "node": "Send Chase Email", "type": "main", "index": 0 },
-          { "node": "Log Chase to Supabase", "type": "main", "index": 0 }
-        ]
-      ]
+      "main": [[
+        { "node": "Send Chase Email", "type": "main", "index": 0 },
+        { "node": "Log Chase to Supabase", "type": "main", "index": 0 }
+      ]]
     },
     "Send Chase Email": {
-      "main": [
-        [{ "node": "Respond to PayPilot", "type": "main", "index": 0 }]
-      ]
+      "main": [[{ "node": "Respond to PayPilot", "type": "main", "index": 0 }]]
     },
     "Send SMS?": {
       "main": [
-        [{ "node": "Generate SMS with AI", "type": "main", "index": 0 }],
+        [{ "node": "Generate SMS with Claude", "type": "main", "index": 0 }],
         []
       ]
     },
-    "Generate SMS with AI": {
-      "main": [
-        [{ "node": "Send SMS via Twilio", "type": "main", "index": 0 }]
-      ]
+    "Generate SMS with Claude": {
+      "main": [[{ "node": "Parse SMS Response", "type": "main", "index": 0 }]]
+    },
+    "Parse SMS Response": {
+      "main": [[{ "node": "Send SMS via Twilio", "type": "main", "index": 0 }]]
     },
     "Log Chase to Supabase": {
-      "main": [
-        [{ "node": "Update Invoice Status", "type": "main", "index": 0 }]
-      ]
+      "main": [[{ "node": "Update Invoice Status", "type": "main", "index": 0 }]]
     }
   },
-  "settings": {
-    "executionOrder": "v1"
-  },
+  "settings": { "executionOrder": "v1" },
   "meta": {
     "instanceId": "paypilot",
-    "notes": "SETUP REQUIRED:\n1. Create webhook node — copy the webhook URL and set it as N8N_WEBHOOK_URL in PayPilot .env.local\n2. Add OpenAI API credentials (model: gpt-4o)\n3. Add SMTP credentials for your email provider\n4. Add Twilio credentials (optional, for SMS)\n5. Add Postgres credentials pointing to your Supabase database (connection string from Supabase dashboard → Settings → Database)\n6. Set n8n variables: SENDER_EMAIL, BUSINESS_NAME, TWILIO_ACCOUNT_SID, TWILIO_FROM_NUMBER\n7. Activate the workflow"
+    "notes": "SETUP REQUIRED:\n1. Copy webhook URL → set as N8N_WEBHOOK_URL in PayPilot .env.local\n2. Add ANTHROPIC_API_KEY to n8n variables (get from console.anthropic.com)\n3. Add SMTP credentials for email sending\n4. Add Twilio credentials (optional, for SMS on invoices >21 days overdue)\n5. Add Postgres credentials → Supabase dashboard → Settings → Database → Connection string\n6. Set n8n variables: ANTHROPIC_API_KEY, SENDER_EMAIL, BUSINESS_NAME, TWILIO_ACCOUNT_SID, TWILIO_FROM_NUMBER\n7. Model used: claude-opus-4-6 via Anthropic Messages API\n8. Activate the workflow"
   }
 }

@@ -3,7 +3,9 @@ import { redirect } from 'next/navigation'
 import { StatsBar } from '@/components/dashboard/StatsBar'
 import { InvoiceTable } from '@/components/dashboard/InvoiceTable'
 import { DashboardActions } from '@/components/dashboard/DashboardActions'
+import { NotificationBell } from '@/components/dashboard/NotificationBell'
 import { OnboardingModal } from '@/components/OnboardingModal'
+import { OnboardingChecklist } from '@/components/OnboardingChecklist'
 import { logOut } from '@/app/actions/auth'
 import { PLAN_LIMITS } from '@/lib/utils'
 import type { Invoice, DashboardStats, PlanTier } from '@/lib/types'
@@ -69,8 +71,14 @@ export default async function DashboardPage() {
 
   const { data: tenant } = await supabase
     .from('tenants')
-    .select('business_name, owner_name, xero_tenant_id, plan_tier, usage_this_month')
+    .select('business_name, owner_name, xero_tenant_id, plan_tier, usage_this_month, onboarding_completed')
     .eq('id', user.id)
+    .single()
+
+  const { data: tenantSettings } = await supabase
+    .from('tenant_settings')
+    .select('id')
+    .eq('tenant_id', user.id)
     .single()
 
   const { data: invoiceRows } = await supabase
@@ -90,40 +98,43 @@ export default async function DashboardPage() {
   const planLimits = PLAN_LIMITS[planTier]
   const usageThisMonth: number = tenant?.usage_this_month ?? 0
   const usagePct = planLimits.invoices === Infinity ? 0 : Math.min(100, (usageThisMonth / planLimits.invoices) * 100)
+  const onboardingCompleted = tenant?.onboarding_completed ?? false
+  const hasSettings = !!tenantSettings
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Onboarding modal for new users */}
       <OnboardingModal isXeroConnected={isXeroConnected} hasInvoices={!isMock} />
 
-      <nav className="bg-white border-b border-gray-100 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <span className="text-xl font-bold text-gray-900">
+      <nav className="bg-white border-b border-gray-100 px-4 sm:px-6 py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 sm:gap-6 min-w-0">
+            <span className="text-xl font-bold text-gray-900 flex-shrink-0">
               Pay<span className="text-blue-600">Pilot</span>
             </span>
-            <span className="text-sm text-gray-400">
+            <span className="hidden sm:inline text-sm text-gray-400 truncate">
               {tenant?.business_name ?? 'Your Business'}
             </span>
           </div>
-          <div className="flex items-center gap-4">
-            {/* Plan usage indicator */}
+          <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+            {/* Plan usage — desktop only */}
             {planLimits.invoices !== Infinity ? (
-              <div className="hidden sm:flex items-center gap-2">
-                <div className="w-24 h-1.5 rounded-full bg-gray-200 overflow-hidden">
+              <div className="hidden md:flex items-center gap-2">
+                <div className="w-20 h-1.5 rounded-full bg-gray-200 overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all ${usagePct >= 90 ? 'bg-red-500' : usagePct >= 70 ? 'bg-yellow-500' : 'bg-blue-500'}`}
                     style={{ width: `${usagePct}%` }}
                   />
                 </div>
-                <span className="text-xs text-gray-400">
-                  {usageThisMonth}/{planLimits.invoices} {planLimits.label}
+                <span className="text-xs text-gray-400 whitespace-nowrap">
+                  {usageThisMonth}/{planLimits.invoices}
                 </span>
               </div>
             ) : (
-              <span className="hidden sm:inline text-xs text-gray-400 capitalize">{planLimits.label} plan</span>
+              <span className="hidden md:inline text-xs text-gray-400 capitalize">{planLimits.label}</span>
             )}
-            <Link href="/dashboard/settings" className="text-sm text-gray-500 hover:text-gray-700">
+            <NotificationBell />
+            <Link href="/dashboard/settings" className="hidden sm:inline text-sm text-gray-500 hover:text-gray-700">
               Settings
             </Link>
             <form action={logOut}>
@@ -147,6 +158,16 @@ export default async function DashboardPage() {
           {/* Client component handles modal state + Xero button */}
           <DashboardActions isXeroConnected={isXeroConnected} />
         </div>
+
+        {/* Onboarding checklist for new users */}
+        {!onboardingCompleted && (
+          <OnboardingChecklist
+            hasXero={isXeroConnected}
+            hasInvoices={!isMock}
+            hasSettings={hasSettings}
+            onboardingCompleted={onboardingCompleted}
+          />
+        )}
 
         {isMock && (
           <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">

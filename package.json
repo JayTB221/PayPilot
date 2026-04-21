@@ -16,9 +16,11 @@
     "framer-motion": "^12.38.0",
     "next": "^15.3.0",
     "papaparse": "^5.4.1",
+    "posthog-js": "^1.369.3",
     "react": "^19",
     "react-dom": "^19",
     "recharts": "^3.8.1",
+    "resend": "^6.12.2",
     "stripe": "^16.0.0",
     "tailwind-merge": "^2.3.0"
   },

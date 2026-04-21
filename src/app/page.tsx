@@ -274,9 +274,9 @@ export default function Home() {
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-8 py-4 text-base font-semibold text-white hover:bg-blue-500 transition-all shadow-2xl shadow-blue-600/30 hover:shadow-blue-500/40 hover:-translate-y-0.5 active:translate-y-0">
               Start recovering invoices →
             </Link>
-            <Link href="/login"
+            <Link href="/demo"
               className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-8 py-4 text-base font-semibold text-gray-300 hover:bg-white/10 hover:text-white transition-all">
-              Log in
+              See it in action
             </Link>
           </motion.div>
 
@@ -412,10 +412,13 @@ export default function Home() {
       {/* ── Footer ── */}
       <footer className="border-t border-white/5 py-8 px-6">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-600">
-          <span>Pay<span className="text-blue-400">Pilot</span> © 2026. Made in New Zealand.</span>
-          <div className="flex gap-6">
-            <Link href="/login" className="hover:text-gray-400 transition-colors">Log in</Link>
-            <Link href="/signup" className="hover:text-gray-400 transition-colors">Sign up</Link>
+          <span>Pay<span className="text-blue-400">Pilot</span> © 2026.</span>
+          <div className="flex flex-wrap justify-center gap-5">
+            <Link href="/demo"    className="hover:text-gray-400 transition-colors">Demo</Link>
+            <Link href="/login"   className="hover:text-gray-400 transition-colors">Log in</Link>
+            <Link href="/signup"  className="hover:text-gray-400 transition-colors">Sign up</Link>
+            <Link href="/privacy" className="hover:text-gray-400 transition-colors">Privacy</Link>
+            <Link href="/terms"   className="hover:text-gray-400 transition-colors">Terms</Link>
           </div>
         </div>
       </footer>

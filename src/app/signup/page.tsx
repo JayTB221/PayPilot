@@ -111,8 +111,10 @@ export default async function SignupPage({ searchParams }: Props) {
         </div>
 
         <p className="mt-4 text-center text-xs text-gray-400">
-          By signing up you agree to our Terms of Service and Privacy Policy.
-          Your subscription is $400 NZD/month, billed after the free trial.
+          By signing up you agree to our{' '}
+          <Link href="/terms" className="underline hover:text-gray-600">Terms of Service</Link>{' '}
+          and{' '}
+          <Link href="/privacy" className="underline hover:text-gray-600">Privacy Policy</Link>.
         </p>
       </div>
     </main>

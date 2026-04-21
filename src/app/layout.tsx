@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
+import { Suspense } from 'react'
+import { PostHogProvider } from '@/components/PostHogProvider'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -7,7 +9,7 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'PayPilot — AI-Powered Invoice Recovery',
   description:
-    'Automatically chase unpaid invoices with personalised AI-written emails and SMS messages. Built for New Zealand small businesses.',
+    'Automatically chase unpaid invoices with personalised AI-written emails and SMS. Stop chasing — let AI recover your money on autopilot.',
   openGraph: {
     title: 'PayPilot — AI-Powered Invoice Recovery',
     description:
@@ -16,14 +18,16 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        <Suspense>
+          <PostHogProvider>
+            {children}
+          </PostHogProvider>
+        </Suspense>
+      </body>
     </html>
   )
 }

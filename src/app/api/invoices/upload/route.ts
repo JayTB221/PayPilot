@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 
 interface CsvRow {
   debtor_name?: string
@@ -12,6 +13,10 @@ interface CsvRow {
 }
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for') ?? 'unknown'
+  const { allowed } = rateLimit(`upload:${ip}`, 10, 60 * 60 * 1000) // 10/hr per IP
+  if (!allowed) return rateLimitResponse()
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -36,7 +41,7 @@ export async function POST(req: NextRequest) {
         debtor_phone: r.debtor_phone ? String(r.debtor_phone) : null,
         invoice_number: r.invoice_number ? String(r.invoice_number) : null,
         amount_owed: Number(r.amount_owed),
-        currency: 'NZD',
+        currency: 'USD',
         due_date: r.due_date!,
         days_overdue: daysOverdue,
         status: 'pending' as const,

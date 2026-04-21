@@ -30,6 +30,12 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
+  // ── Public routes — no auth required ─────────────────────────────────────
+  const publicPaths = ['/demo', '/forgot-password', '/reset-password', '/confirm-email', '/privacy', '/terms']
+  if (publicPaths.some(p => pathname.startsWith(p))) {
+    return supabaseResponse
+  }
+
   // ── Protect /dashboard/* ──────────────────────────────────────────────────
   if (pathname.startsWith('/dashboard')) {
     if (!user) {

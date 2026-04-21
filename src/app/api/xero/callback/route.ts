@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
+import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 
 export async function GET(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for') ?? 'unknown'
+  const { allowed } = rateLimit(`xero-cb:${ip}`, 5, 60 * 1000) // 5/min per IP
+  if (!allowed) return rateLimitResponse()
+
   const { searchParams } = req.nextUrl
   const code = searchParams.get('code')
   const state = searchParams.get('state') // supabase user id

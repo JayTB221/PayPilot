@@ -5,6 +5,22 @@ import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
 import type { TenantSettings } from '@/lib/types'
 
+async function disconnectXero() {
+  'use server'
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  await supabase.from('tenants').update({
+    xero_access_token: null,
+    xero_refresh_token: null,
+    xero_tenant_id: null,
+    xero_token_expiry: null,
+  }).eq('id', user.id)
+
+  revalidatePath('/dashboard/settings')
+}
+
 async function saveSettings(formData: FormData) {
   'use server'
   const supabase = await createClient()
@@ -91,7 +107,17 @@ export default async function SettingsPage() {
               <dt className="text-gray-400">Xero</dt>
               <dd className="mt-0.5 font-medium text-gray-900">
                 {tenant?.xero_tenant_id ? (
-                  <span className="text-green-600">Connected</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-green-600">Connected</span>
+                    <form action={disconnectXero}>
+                      <button
+                        type="submit"
+                        className="text-xs text-red-500 hover:text-red-700 underline transition-colors"
+                      >
+                        Disconnect
+                      </button>
+                    </form>
+                  </div>
                 ) : (
                   <a href="/api/xero/auth" className="text-blue-600 hover:underline">Connect Xero</a>
                 )}

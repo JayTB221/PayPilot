@@ -3,48 +3,50 @@ import { redirect } from 'next/navigation'
 import { StatsBar } from '@/components/dashboard/StatsBar'
 import { InvoiceTable } from '@/components/dashboard/InvoiceTable'
 import { DashboardActions } from '@/components/dashboard/DashboardActions'
+import { OnboardingModal } from '@/components/OnboardingModal'
 import { logOut } from '@/app/actions/auth'
-import type { Invoice, DashboardStats } from '@/lib/types'
+import { PLAN_LIMITS } from '@/lib/utils'
+import type { Invoice, DashboardStats, PlanTier } from '@/lib/types'
 import Link from 'next/link'
 
 const MOCK_INVOICES: Invoice[] = [
   {
     id: 'mock-1', tenant_id: '', xero_invoice_id: null,
     debtor_name: 'Sarah Mitchell', debtor_company: 'Mitchell Design Co',
-    debtor_email: 'sarah@mitchelldesign.co.nz', debtor_phone: '+6421000001',
-    invoice_number: 'INV-1042', amount_owed: 3200, currency: 'NZD',
+    debtor_email: 'sarah@mitchelldesign.com', debtor_phone: '+12025550001',
+    invoice_number: 'INV-1042', amount_owed: 3200, currency: 'USD',
     due_date: '2026-03-01', days_overdue: 47, status: 'escalated',
     last_chased_at: '2026-04-10T09:00:00Z', times_chased: 5, created_at: '2026-03-01T00:00:00Z',
   },
   {
     id: 'mock-2', tenant_id: '', xero_invoice_id: null,
-    debtor_name: 'James Thornton', debtor_company: 'Thornton Builders Ltd',
-    debtor_email: 'james@thorntonbuilders.co.nz', debtor_phone: null,
-    invoice_number: 'INV-1038', amount_owed: 8750, currency: 'NZD',
+    debtor_name: 'James Thornton', debtor_company: 'Thornton Builders LLC',
+    debtor_email: 'james@thorntonbuilders.com', debtor_phone: null,
+    invoice_number: 'INV-1038', amount_owed: 8750, currency: 'USD',
     due_date: '2026-03-15', days_overdue: 33, status: 'contacted',
     last_chased_at: '2026-04-12T10:30:00Z', times_chased: 3, created_at: '2026-03-15T00:00:00Z',
   },
   {
     id: 'mock-3', tenant_id: '', xero_invoice_id: null,
-    debtor_name: 'Aroha Ngata', debtor_company: null,
-    debtor_email: 'aroha.ngata@gmail.com', debtor_phone: '+6427000003',
-    invoice_number: 'INV-1051', amount_owed: 1500, currency: 'NZD',
+    debtor_name: 'Aria Nguyen', debtor_company: null,
+    debtor_email: 'aria.nguyen@gmail.com', debtor_phone: '+12025550003',
+    invoice_number: 'INV-1051', amount_owed: 1500, currency: 'USD',
     due_date: '2026-04-05', days_overdue: 12, status: 'contacted',
     last_chased_at: '2026-04-15T08:00:00Z', times_chased: 1, created_at: '2026-04-05T00:00:00Z',
   },
   {
     id: 'mock-4', tenant_id: '', xero_invoice_id: null,
-    debtor_name: 'Chen Industries', debtor_company: 'Chen Industries Ltd',
-    debtor_email: 'accounts@chenindustries.co.nz', debtor_phone: '+6499000004',
-    invoice_number: 'INV-1029', amount_owed: 12400, currency: 'NZD',
+    debtor_name: 'Chen Industries', debtor_company: 'Chen Industries Inc',
+    debtor_email: 'accounts@chenindustries.com', debtor_phone: '+12025550004',
+    invoice_number: 'INV-1029', amount_owed: 12400, currency: 'USD',
     due_date: '2026-04-10', days_overdue: 7, status: 'pending',
     last_chased_at: null, times_chased: 0, created_at: '2026-04-10T00:00:00Z',
   },
   {
     id: 'mock-5', tenant_id: '', xero_invoice_id: null,
-    debtor_name: 'Wellington Events', debtor_company: 'Wellington Events Group',
-    debtor_email: 'finance@wellingtoneventgroup.co.nz', debtor_phone: '+6444000005',
-    invoice_number: 'INV-1019', amount_owed: 5600, currency: 'NZD',
+    debtor_name: 'Pacific Events Co', debtor_company: 'Pacific Events Group',
+    debtor_email: 'finance@pacificevents.com', debtor_phone: '+12025550005',
+    invoice_number: 'INV-1019', amount_owed: 5600, currency: 'USD',
     due_date: '2026-02-20', days_overdue: 56, status: 'paid',
     last_chased_at: '2026-03-15T14:00:00Z', times_chased: 4, created_at: '2026-02-20T00:00:00Z',
   },
@@ -67,7 +69,7 @@ export default async function DashboardPage() {
 
   const { data: tenant } = await supabase
     .from('tenants')
-    .select('business_name, owner_name, xero_tenant_id')
+    .select('business_name, owner_name, xero_tenant_id, plan_tier, usage_this_month')
     .eq('id', user.id)
     .single()
 
@@ -84,9 +86,16 @@ export default async function DashboardPage() {
   const isMock = (invoiceRows ?? []).length === 0
   const isXeroConnected = !!tenant?.xero_tenant_id
   const stats = calcStats(invoices)
+  const planTier = (tenant?.plan_tier ?? 'starter') as PlanTier
+  const planLimits = PLAN_LIMITS[planTier]
+  const usageThisMonth: number = tenant?.usage_this_month ?? 0
+  const usagePct = planLimits.invoices === Infinity ? 0 : Math.min(100, (usageThisMonth / planLimits.invoices) * 100)
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Onboarding modal for new users */}
+      <OnboardingModal isXeroConnected={isXeroConnected} hasInvoices={!isMock} />
+
       <nav className="bg-white border-b border-gray-100 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-6">
@@ -98,6 +107,22 @@ export default async function DashboardPage() {
             </span>
           </div>
           <div className="flex items-center gap-4">
+            {/* Plan usage indicator */}
+            {planLimits.invoices !== Infinity ? (
+              <div className="hidden sm:flex items-center gap-2">
+                <div className="w-24 h-1.5 rounded-full bg-gray-200 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${usagePct >= 90 ? 'bg-red-500' : usagePct >= 70 ? 'bg-yellow-500' : 'bg-blue-500'}`}
+                    style={{ width: `${usagePct}%` }}
+                  />
+                </div>
+                <span className="text-xs text-gray-400">
+                  {usageThisMonth}/{planLimits.invoices} {planLimits.label}
+                </span>
+              </div>
+            ) : (
+              <span className="hidden sm:inline text-xs text-gray-400 capitalize">{planLimits.label} plan</span>
+            )}
             <Link href="/dashboard/settings" className="text-sm text-gray-500 hover:text-gray-700">
               Settings
             </Link>
@@ -127,6 +152,13 @@ export default async function DashboardPage() {
           <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
             <strong>Demo data</strong> — these are sample invoices so you can see how PayPilot looks.
             Click <strong>+ Add Invoices</strong> to import your real invoices via CSV.
+          </div>
+        )}
+
+        {usagePct >= 90 && planLimits.invoices !== Infinity && (
+          <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
+            <strong>Usage limit approaching</strong> — you&apos;ve used {usageThisMonth} of {planLimits.invoices} invoice chases this month.{' '}
+            <Link href="/subscribe" className="underline font-medium">Upgrade your plan</Link> to chase more.
           </div>
         )}
 

@@ -1,18 +1,11 @@
-// ─────────────────────────────────────────────
-//  Domain types — mirroring the Supabase schema
-// ─────────────────────────────────────────────
-
 export type SubscriptionStatus = 'inactive' | 'active' | 'cancelled' | 'past_due'
 export type InvoiceStatus =
-  | 'pending'
-  | 'contacted'
-  | 'responded'
-  | 'paid'
-  | 'escalated'
-  | 'written_off'
+  | 'pending' | 'contacted' | 'responded'
+  | 'paid' | 'escalated' | 'written_off'
 export type ActionType = 'email' | 'sms' | 'escalation_flag'
 export type Channel = 'email' | 'sms'
 export type DeliveryStatus = 'sent' | 'delivered' | 'failed'
+export type PlanTier = 'starter' | 'professional' | 'enterprise'
 
 export interface Tenant {
   id: string
@@ -22,6 +15,8 @@ export interface Tenant {
   stripe_customer_id: string | null
   stripe_subscription_id: string | null
   subscription_status: SubscriptionStatus
+  plan_tier: PlanTier
+  usage_this_month: number
   xero_access_token: string | null
   xero_refresh_token: string | null
   xero_tenant_id: string | null
@@ -73,10 +68,6 @@ export interface TenantSettings {
   email_signature: string | null
   created_at: string
 }
-
-// ─────────────────────────────────────────────
-//  Utility types
-// ─────────────────────────────────────────────
 
 export interface DashboardStats {
   totalInvoices: number

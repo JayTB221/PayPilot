@@ -1,7 +1,7 @@
 'use client'
 
 import { motion, useInView, type Variants } from 'framer-motion'
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import Link from 'next/link'
 
 // ── Animation variants ────────────────────────────────────────────────────────
@@ -119,6 +119,103 @@ function DashboardMockup() {
   )
 }
 
+// ── Landing pricing ──────────────────────────────────────────────────────────
+const LANDING_PLANS = [
+  {
+    name: 'Starter', monthlyPrice: 99, annualPrice: 82,
+    description: 'Perfect for freelancers and small businesses.',
+    features: ['Up to 50 invoices/month', 'Email chasing', 'Xero integration', 'Dashboard & history', 'Email support'],
+    highlight: false,
+  },
+  {
+    name: 'Professional', monthlyPrice: 249, annualPrice: 207,
+    description: 'For growing businesses needing email + SMS.',
+    features: ['Up to 200 invoices/month', 'Email + SMS chasing', 'Full analytics dashboard', 'Custom email signature', 'Payment links in emails', 'Priority support'],
+    highlight: true, badge: 'Most popular',
+  },
+  {
+    name: 'Enterprise', monthlyPrice: 499, annualPrice: 415,
+    description: 'For agencies and high-volume teams.',
+    features: ['Unlimited invoices', 'Email + SMS + escalation', 'Xero + QuickBooks', 'Advanced analytics', 'Custom sending domain', 'API access', 'Dedicated support'],
+    highlight: false,
+  },
+]
+
+function LandingPricing() {
+  const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly')
+  return (
+    <Section className="max-w-6xl mx-auto px-6 py-24">
+      <motion.div variants={fadeUp} className="text-center mb-10">
+        <p className="text-sm font-semibold text-blue-400 uppercase tracking-widest mb-3">Pricing</p>
+        <h2 className="text-4xl font-bold text-white">Simple, transparent pricing</h2>
+        <p className="mt-3 text-gray-500">Start recovering invoices today. Cancel anytime.</p>
+        <div className="mt-6 inline-flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 p-1">
+          <button onClick={() => setBilling('monthly')}
+            className={`rounded-lg px-5 py-2 text-sm font-medium transition-all ${billing === 'monthly' ? 'bg-white text-gray-900 shadow' : 'text-gray-400 hover:text-white'}`}>
+            Monthly
+          </button>
+          <button onClick={() => setBilling('annual')}
+            className={`rounded-lg px-5 py-2 text-sm font-medium transition-all flex items-center gap-2 ${billing === 'annual' ? 'bg-white text-gray-900 shadow' : 'text-gray-400 hover:text-white'}`}>
+            Annual
+            <span className="rounded-full bg-green-500/20 border border-green-500/30 px-2 py-0.5 text-[10px] font-semibold text-green-400">2 months free</span>
+          </button>
+        </div>
+      </motion.div>
+
+      <div className="grid sm:grid-cols-3 gap-5">
+        {LANDING_PLANS.map(plan => {
+          const price = billing === 'monthly' ? plan.monthlyPrice : plan.annualPrice
+          return (
+            <motion.div key={plan.name} variants={fadeUp}
+              className={`relative rounded-2xl border p-7 flex flex-col transition-all duration-300 ${
+                plan.highlight
+                  ? 'border-blue-500/50 bg-blue-950/30 shadow-2xl shadow-blue-500/10'
+                  : 'border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.05]'
+              }`}>
+              {plan.highlight && (
+                <div className="absolute inset-0 rounded-2xl opacity-30"
+                  style={{ background: 'radial-gradient(circle at 50% 0%, rgba(59,130,246,0.2), transparent 60%)' }} />
+              )}
+              {'badge' in plan && plan.badge && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <span className="rounded-full bg-blue-600 px-4 py-1 text-xs font-semibold text-white shadow-lg shadow-blue-600/30">{plan.badge}</span>
+                </div>
+              )}
+              <div className="relative flex flex-col flex-1">
+                <p className="text-sm font-semibold text-gray-400 uppercase tracking-widest">{plan.name}</p>
+                <div className="mt-3 flex items-baseline gap-1">
+                  <span className="text-4xl font-extrabold text-white">${price}</span>
+                  <span className="text-gray-500 text-sm">/mo</span>
+                </div>
+                {billing === 'annual' && (
+                  <p className="mt-1 text-xs text-green-400">${price * 12}/yr · save ${(plan.monthlyPrice - price) * 12}/yr</p>
+                )}
+                <p className="mt-3 text-sm text-gray-500 leading-relaxed">{plan.description}</p>
+                <ul className="mt-5 space-y-2.5 flex-1">
+                  {plan.features.map(f => (
+                    <li key={f} className="flex items-start gap-2.5 text-sm text-gray-300">
+                      <span className={`mt-0.5 flex-shrink-0 h-4 w-4 rounded-full flex items-center justify-center text-[10px] font-bold ${plan.highlight ? 'bg-blue-500/20 text-blue-400' : 'bg-white/10 text-gray-400'}`}>✓</span>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <Link href="/signup"
+                  className={`mt-7 block text-center w-full rounded-xl py-3 text-sm font-semibold transition-all ${
+                    plan.highlight
+                      ? 'bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-600/20'
+                      : 'border border-white/15 bg-white/5 text-white hover:bg-white/10'
+                  }`}>
+                  Get started with {plan.name}
+                </Link>
+              </div>
+            </motion.div>
+          )
+        })}
+      </div>
+    </Section>
+  )
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function Home() {
   return (
@@ -184,7 +281,7 @@ export default function Home() {
           </motion.div>
 
           <motion.p variants={fadeUp} className="text-sm text-gray-600">
-            $400 NZD/month · Cancel anytime · No lock-in contracts
+            From $99/mo · Cancel anytime · No lock-in contracts
           </motion.p>
         </motion.div>
 
@@ -287,49 +384,7 @@ export default function Home() {
       </Section>
 
       {/* ── Pricing ── */}
-      <Section className="max-w-6xl mx-auto px-6 py-24 text-center">
-        <motion.div variants={fadeUp} className="mb-12">
-          <p className="text-sm font-semibold text-blue-400 uppercase tracking-widest mb-3">Pricing</p>
-          <h2 className="text-4xl font-bold text-white">Simple, flat-rate pricing</h2>
-          <p className="mt-3 text-gray-500">One plan. Everything included. No per-invoice fees.</p>
-        </motion.div>
-
-        <motion.div variants={fadeUp}
-          className="inline-block text-left max-w-sm w-full rounded-2xl border border-blue-500/30 bg-gradient-to-b from-blue-950/40 to-gray-950/40 p-8 shadow-2xl shadow-blue-500/10 relative overflow-hidden">
-          {/* Glow */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-24 bg-blue-500/10 blur-2xl rounded-full" />
-
-          <div className="relative">
-            <div className="inline-flex items-center gap-2 rounded-full bg-blue-500/10 border border-blue-500/20 px-3 py-1 text-xs font-medium text-blue-400 mb-4">
-              Most popular
-            </div>
-            <p className="text-5xl font-extrabold text-white">$400
-              <span className="text-lg font-medium text-gray-500 ml-1">NZD/mo</span>
-            </p>
-
-            <ul className="mt-6 space-y-3 text-sm text-gray-400">
-              {[
-                'Unlimited invoices tracked',
-                'Claude AI email + SMS follow-ups',
-                'Xero sync',
-                'Full chase history & audit log',
-                'Dashboard analytics',
-                'Cancel anytime',
-              ].map(item => (
-                <li key={item} className="flex items-center gap-3">
-                  <span className="flex-shrink-0 h-5 w-5 rounded-full bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400 text-xs">✓</span>
-                  {item}
-                </li>
-              ))}
-            </ul>
-
-            <Link href="/signup"
-              className="mt-8 block w-full rounded-xl bg-blue-600 py-3.5 text-center text-sm font-semibold text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20">
-              Get started →
-            </Link>
-          </div>
-        </motion.div>
-      </Section>
+      <LandingPricing />
 
       {/* ── CTA ── */}
       <section className="relative overflow-hidden py-24">

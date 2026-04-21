@@ -2,21 +2,22 @@ import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createAdminClient } from '@/lib/supabase/server'
 import Stripe from 'stripe'
+import type { PlanTier } from '@/lib/types'
 
-// Stripe requires the raw body for webhook signature verification
 export const config = { api: { bodyParser: false } }
 
-async function updateSubscriptionStatus(
+async function updateSubscription(
   userId: string,
   status: string,
-  subscriptionId?: string
+  opts?: { subscriptionId?: string; planTier?: PlanTier }
 ) {
   const supabase = await createAdminClient()
   await supabase
     .from('tenants')
     .update({
       subscription_status: status,
-      ...(subscriptionId ? { stripe_subscription_id: subscriptionId } : {}),
+      ...(opts?.subscriptionId ? { stripe_subscription_id: opts.subscriptionId } : {}),
+      ...(opts?.planTier       ? { plan_tier: opts.planTier }                    : {}),
     })
     .eq('id', userId)
 }
@@ -35,12 +36,20 @@ export async function POST(req: NextRequest) {
   const getUserId = (obj: { metadata?: Record<string, string> | null }) =>
     obj.metadata?.supabase_user_id
 
+  const getPlanTier = (obj: { metadata?: Record<string, string> | null }): PlanTier =>
+    (obj.metadata?.plan_tier as PlanTier) ?? 'starter'
+
   switch (event.type) {
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session
       const userId = getUserId(session)
       if (userId && session.subscription) {
-        await updateSubscriptionStatus(userId, 'active', session.subscription as string)
+        // Retrieve subscription to get plan metadata
+        const sub = await stripe.subscriptions.retrieve(session.subscription as string)
+        await updateSubscription(userId, 'active', {
+          subscriptionId: sub.id,
+          planTier: getPlanTier(sub),
+        })
       }
       break
     }
@@ -48,20 +57,20 @@ export async function POST(req: NextRequest) {
       const invoice = event.data.object as Stripe.Invoice
       const sub = await stripe.subscriptions.retrieve(invoice.subscription as string)
       const userId = getUserId(sub)
-      if (userId) await updateSubscriptionStatus(userId, 'active', sub.id)
+      if (userId) await updateSubscription(userId, 'active', { subscriptionId: sub.id, planTier: getPlanTier(sub) })
       break
     }
     case 'invoice.payment_failed': {
       const invoice = event.data.object as Stripe.Invoice
       const sub = await stripe.subscriptions.retrieve(invoice.subscription as string)
       const userId = getUserId(sub)
-      if (userId) await updateSubscriptionStatus(userId, 'past_due')
+      if (userId) await updateSubscription(userId, 'past_due')
       break
     }
     case 'customer.subscription.deleted': {
       const sub = event.data.object as Stripe.Subscription
       const userId = getUserId(sub)
-      if (userId) await updateSubscriptionStatus(userId, 'cancelled')
+      if (userId) await updateSubscription(userId, 'cancelled')
       break
     }
   }

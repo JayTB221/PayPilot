@@ -4,6 +4,7 @@ import { StatsBar } from '@/components/dashboard/StatsBar'
 import { InvoiceTable } from '@/components/dashboard/InvoiceTable'
 import { DashboardActions } from '@/components/dashboard/DashboardActions'
 import { NotificationBell } from '@/components/dashboard/NotificationBell'
+import { AriaStatusCard } from '@/components/dashboard/AriaStatusCard'
 import { OnboardingModal } from '@/components/OnboardingModal'
 import { OnboardingChecklist } from '@/components/OnboardingChecklist'
 import { logOut } from '@/app/actions/auth'
@@ -91,6 +92,29 @@ export default async function DashboardPage() {
     ? (invoiceRows as Invoice[])
     : MOCK_INVOICES
 
+  // Aria activity — today's chase log
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+
+  const [{ data: todayLogs }, { data: lastRunRow }] = await Promise.all([
+    supabase
+      .from('chase_log')
+      .select('id, response_received')
+      .eq('tenant_id', user.id)
+      .gte('sent_at', todayStart.toISOString()),
+    supabase
+      .from('chase_log')
+      .select('sent_at')
+      .eq('tenant_id', user.id)
+      .order('sent_at', { ascending: false })
+      .limit(1)
+      .single(),
+  ])
+
+  const todayChased = todayLogs?.length ?? 0
+  const todayResponses = todayLogs?.filter(l => l.response_received).length ?? 0
+  const lastRunAt = lastRunRow?.sent_at ?? null
+
   const isMock = (invoiceRows ?? []).length === 0
   const isXeroConnected = !!tenant?.xero_tenant_id
   const stats = calcStats(invoices)
@@ -158,6 +182,15 @@ export default async function DashboardPage() {
           {/* Client component handles modal state + Xero button */}
           <DashboardActions isXeroConnected={isXeroConnected} />
         </div>
+
+        {/* Aria status card */}
+        <AriaStatusCard
+          isXeroConnected={isXeroConnected}
+          ownerName={tenant?.owner_name ?? null}
+          lastRunAt={lastRunAt}
+          todayChased={todayChased}
+          todayResponses={todayResponses}
+        />
 
         {/* Onboarding checklist for new users */}
         {!onboardingCompleted && (

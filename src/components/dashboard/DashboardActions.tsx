@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { AriaAvatar } from '@/components/AriaAvatar'
 import { CsvUploadModal } from './CsvUploadModal'
 
 interface Props {
@@ -12,23 +13,27 @@ export function DashboardActions({ isXeroConnected }: Props) {
 
   return (
     <>
-      <div className="flex gap-3">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
         {isXeroConnected ? (
-          <span className="inline-flex items-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm font-medium text-green-700">
-            <span className="h-2 w-2 rounded-full bg-green-500" />
-            Xero connected
-          </span>
+          <div className="flex items-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-3 py-1.5">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+            </span>
+            <span className="text-xs font-medium text-purple-700">Aria is active</span>
+          </div>
         ) : (
           <a
             href="/api/xero/auth"
-            className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
           >
+            <AriaAvatar size="xs" />
             Connect Xero
           </a>
         )}
         <button
           onClick={() => setShowModal(true)}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+          className="rounded-lg bg-blue-600 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-white hover:bg-blue-700 transition-colors"
         >
           + Add Invoices
         </button>

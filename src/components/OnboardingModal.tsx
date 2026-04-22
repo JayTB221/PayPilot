@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { AriaAvatar } from '@/components/AriaAvatar'
 
 interface Props {
   isXeroConnected: boolean
@@ -25,28 +26,32 @@ export function OnboardingModal({ isXeroConnected, hasInvoices }: Props) {
           ✕
         </button>
 
-        {/* Step progress bar */}
+        {/* Step progress */}
         <div className="flex items-center gap-2 mb-8">
           {[1, 2, 3].map(s => (
-            <div
-              key={s}
-              className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${s <= step ? 'bg-blue-500' : 'bg-white/10'}`}
+            <div key={s}
+              className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${s <= step ? 'bg-purple-500' : 'bg-white/10'}`}
             />
           ))}
         </div>
 
         {step === 1 && (
           <>
-            <div className="text-4xl mb-4">🔗</div>
-            <h2 className="text-xl font-bold text-white mb-2">Connect your Xero account</h2>
+            <div className="flex items-center gap-3 mb-5">
+              <AriaAvatar size="lg" />
+              <div>
+                <p className="text-xs text-purple-400 font-semibold uppercase tracking-widest">Meet your agent</p>
+                <h2 className="text-xl font-bold text-white">Hi, I&apos;m Aria.</h2>
+              </div>
+            </div>
             <p className="text-sm text-gray-400 mb-6 leading-relaxed">
-              PayPilot syncs your overdue invoices directly from Xero — no manual entry needed. Connect once and we handle the rest.
+              I&apos;m your AI invoice recovery agent. Once you connect Xero, I&apos;ll pull in your overdue invoices and start sending personalised follow-ups — automatically, every morning.
             </p>
             <a
               href="/api/xero/auth"
-              className="block w-full rounded-xl bg-blue-600 py-3 text-center text-sm font-semibold text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"
+              className="block w-full rounded-xl bg-purple-600 py-3 text-center text-sm font-semibold text-white hover:bg-purple-500 transition-all shadow-lg shadow-purple-600/20"
             >
-              Connect Xero →
+              Connect Xero so I can get started →
             </a>
             <p className="mt-4 text-center text-xs text-gray-600">
               Don&apos;t use Xero?{' '}
@@ -59,14 +64,23 @@ export function OnboardingModal({ isXeroConnected, hasInvoices }: Props) {
 
         {step === 2 && (
           <>
-            <div className="text-4xl mb-4">📥</div>
-            <h2 className="text-xl font-bold text-white mb-2">Xero connected!</h2>
+            <div className="flex items-center gap-3 mb-5">
+              <AriaAvatar size="lg" />
+              <div>
+                <h2 className="text-xl font-bold text-white">Xero connected!</h2>
+                <p className="text-xs text-purple-400 mt-0.5">Aria is checking your account</p>
+              </div>
+            </div>
             <p className="text-sm text-gray-400 mb-6 leading-relaxed">
-              We&apos;re importing your overdue invoices now. This usually takes under a minute.
+              I&apos;m importing your overdue invoices now. This usually takes under a minute — I&apos;ll have everything ready for my first run tonight.
             </p>
-            <div className="rounded-xl bg-white/5 border border-white/10 p-4 flex items-center gap-3">
-              <div className="h-4 w-4 flex-shrink-0 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
-              <span className="text-sm text-gray-300">Importing invoices from Xero…</span>
+            <div className="rounded-xl bg-white/5 border border-purple-500/20 p-4 flex items-center gap-3">
+              <AriaAvatar size="xs" />
+              <span className="text-sm text-gray-300">Aria is checking Xero for overdue invoices…</span>
+              <svg className="h-4 w-4 animate-spin text-purple-400 ml-auto flex-shrink-0" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
             </div>
             <button
               onClick={() => setDismissed(true)}
@@ -79,16 +93,21 @@ export function OnboardingModal({ isXeroConnected, hasInvoices }: Props) {
 
         {step === 3 && (
           <>
-            <div className="text-4xl mb-4">🚀</div>
-            <h2 className="text-xl font-bold text-white mb-2">You&apos;re all set!</h2>
+            <div className="flex items-center gap-3 mb-5">
+              <AriaAvatar size="lg" />
+              <div>
+                <h2 className="text-xl font-bold text-white">I&apos;m ready.</h2>
+                <p className="text-xs text-purple-400 mt-0.5">Aria is active</p>
+              </div>
+            </div>
             <p className="text-sm text-gray-400 mb-6 leading-relaxed">
-              PayPilot is chasing your overdue invoices. Check back soon — you&apos;ll start seeing recoveries appear in your dashboard.
+              I&apos;ll start chasing your overdue invoices tonight. You&apos;ll receive a morning briefing from me after my first run — check back tomorrow.
             </p>
             <button
               onClick={() => setDismissed(true)}
-              className="block w-full rounded-xl bg-blue-600 py-3 text-center text-sm font-semibold text-white hover:bg-blue-500 transition-all"
+              className="block w-full rounded-xl bg-purple-600 py-3 text-center text-sm font-semibold text-white hover:bg-purple-500 transition-all"
             >
-              Go to dashboard
+              Let&apos;s go →
             </button>
           </>
         )}

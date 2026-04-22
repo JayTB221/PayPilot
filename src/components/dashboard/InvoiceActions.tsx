@@ -2,11 +2,18 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { AriaAvatar } from '@/components/AriaAvatar'
 import type { InvoiceStatus } from '@/lib/types'
 
 interface Props {
   invoiceId: string
   status: InvoiceStatus
+}
+
+const ARIA_STATES: Record<string, string> = {
+  'chase-now':        'Aria is writing a follow-up…',
+  'mark-paid':        'Aria is updating the record…',
+  'mark-written-off': 'Aria is archiving this invoice…',
 }
 
 export function InvoiceActions({ invoiceId, status }: Props) {
@@ -36,19 +43,32 @@ export function InvoiceActions({ invoiceId, status }: Props) {
 
   return (
     <div className="flex flex-col items-end gap-2">
-      {error && (
-        <p className="text-sm text-red-600">{error}</p>
+      {/* Aria loading state */}
+      {loading && (
+        <div className="flex items-center gap-2 rounded-xl border border-purple-100 bg-purple-50 px-4 py-2">
+          <AriaAvatar size="xs" />
+          <span className="text-xs text-purple-700 font-medium">{ARIA_STATES[loading]}</span>
+          <svg className="h-3.5 w-3.5 animate-spin text-purple-500" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+        </div>
       )}
+
+      {error && (
+        <p className="text-sm text-red-600 text-right">{error}</p>
+      )}
+
       <div className="flex gap-2 flex-wrap justify-end">
         {!isTerminal && (
           <>
             <button
               onClick={() => callAction('chase-now')}
               disabled={!!loading}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white
-                         hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white
+                         hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {loading === 'chase-now' ? 'Sending…' : 'Chase now'}
+              Ask Aria to chase
             </button>
             <button
               onClick={() => callAction('mark-paid')}
@@ -56,7 +76,7 @@ export function InvoiceActions({ invoiceId, status }: Props) {
               className="rounded-lg border border-green-300 bg-green-50 px-4 py-2 text-sm font-semibold
                          text-green-700 hover:bg-green-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {loading === 'mark-paid' ? 'Saving…' : 'Mark as paid'}
+              Mark as paid
             </button>
             <button
               onClick={() => callAction('mark-written-off')}
@@ -64,13 +84,13 @@ export function InvoiceActions({ invoiceId, status }: Props) {
               className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-500
                          hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {loading === 'mark-written-off' ? 'Saving…' : 'Write off'}
+              Write off
             </button>
           </>
         )}
         {isTerminal && (
           <p className="text-sm text-gray-400 italic">
-            {status === 'paid' ? 'This invoice has been paid.' : 'This invoice has been written off.'}
+            {status === 'paid' ? 'Aria has marked this invoice as paid.' : 'This invoice has been written off.'}
           </p>
         )}
       </div>

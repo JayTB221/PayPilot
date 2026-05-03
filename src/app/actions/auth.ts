@@ -32,12 +32,17 @@ export async function signUp(formData: FormData) {
   }
 
   const admin = await createAdminClient()
+  const now = new Date()
+  const trialEndsAt = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)
+
   const { error: tenantError } = await admin.from('tenants').insert({
     id: userId,
     email,
     business_name: businessName,
     owner_name: ownerName,
     subscription_status: 'inactive',
+    trial_started_at: now.toISOString(),
+    trial_ends_at: trialEndsAt.toISOString(),
   })
 
   if (tenantError) {

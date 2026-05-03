@@ -17,6 +17,9 @@ export interface Tenant {
   subscription_status: SubscriptionStatus
   plan_tier: PlanTier
   usage_this_month: number
+  trial_started_at: string | null
+  trial_ends_at: string | null
+  onboarding_completed: boolean
   xero_access_token: string | null
   xero_refresh_token: string | null
   xero_tenant_id: string | null

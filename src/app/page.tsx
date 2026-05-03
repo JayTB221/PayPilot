@@ -124,19 +124,45 @@ const LANDING_PLANS = [
   {
     name: 'Starter', monthlyPrice: 99, annualPrice: 82,
     description: 'Perfect for freelancers and small businesses.',
-    features: ['Up to 50 invoices/month', 'Email chasing', 'Xero integration', 'Dashboard & history', 'Email support'],
+    features: [
+      '14-day free trial, no credit card',
+      'Up to 50 invoices chased/month',
+      'Email chasing only',
+      'Xero integration',
+      'Basic dashboard & history',
+      'Email support',
+    ],
     highlight: false,
   },
   {
     name: 'Professional', monthlyPrice: 249, annualPrice: 207,
-    description: 'For growing businesses needing email + SMS.',
-    features: ['Up to 200 invoices/month', 'Email + SMS chasing', 'Full analytics dashboard', 'Custom email signature', 'Payment links in emails', 'Priority support'],
+    description: 'For growing businesses that need email and SMS recovery.',
+    features: [
+      '14-day free trial, no credit card',
+      'Up to 200 invoices/month',
+      'Email AND SMS chasing',
+      'Advanced analytics',
+      'Custom email signature',
+      'Payment link in every chase email',
+      'Downloadable chase reports',
+      'Priority email support',
+    ],
     highlight: true, badge: 'Most popular',
   },
   {
     name: 'Enterprise', monthlyPrice: 499, annualPrice: 415,
     description: 'For agencies and high-volume teams.',
-    features: ['Unlimited invoices', 'Email + SMS + escalation', 'Xero + QuickBooks', 'Advanced analytics', 'Custom sending domain', 'API access', 'Dedicated support'],
+    features: [
+      '14-day free trial, no credit card',
+      'Unlimited invoices',
+      'Email + SMS + escalation',
+      'Custom sending domain',
+      'QuickBooks + Xero integration',
+      'API access',
+      'Multiple team seats',
+      'Dedicated support with SLA',
+      'Personal onboarding call',
+    ],
     highlight: false,
   },
 ]
@@ -148,7 +174,7 @@ function LandingPricing() {
       <motion.div variants={fadeUp} className="text-center mb-10">
         <p className="text-sm font-semibold text-blue-400 uppercase tracking-widest mb-3">Pricing</p>
         <h2 className="text-4xl font-bold text-white">Simple, transparent pricing</h2>
-        <p className="mt-3 text-gray-500">Start recovering invoices today. Cancel anytime.</p>
+        <p className="mt-3 text-gray-500">14-day free trial on all plans. No credit card required. Cancel anytime.</p>
         <div className="mt-6 inline-flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 p-1">
           <button onClick={() => setBilling('monthly')}
             className={`rounded-lg px-5 py-2 text-sm font-medium transition-all ${billing === 'monthly' ? 'bg-white text-gray-900 shadow' : 'text-gray-400 hover:text-white'}`}>
@@ -205,7 +231,7 @@ function LandingPricing() {
                       ? 'bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-600/20'
                       : 'border border-white/15 bg-white/5 text-white hover:bg-white/10'
                   }`}>
-                  Get started with {plan.name}
+                  Start free 14-day trial
                 </Link>
               </div>
             </motion.div>
@@ -281,7 +307,7 @@ export default function Home() {
           </motion.div>
 
           <motion.p variants={fadeUp} className="text-sm text-gray-600">
-            From $99/mo · Cancel anytime · No lock-in contracts
+            14-day free trial · No credit card required · Cancel anytime
           </motion.p>
         </motion.div>
 

@@ -5,8 +5,8 @@ import { StatusBadge } from '@/components/dashboard/StatusBadge'
 import { InvoiceActions } from '@/components/dashboard/InvoiceActions'
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed'
 import { AriaAvatar } from '@/components/AriaAvatar'
-import { formatCurrency, formatDate, calcDaysOverdue } from '@/lib/utils'
-import type { Invoice, ChaseLog } from '@/lib/types'
+import { formatCurrency, formatDate, calcDaysOverdue, PLAN_LIMITS } from '@/lib/utils'
+import type { Invoice, ChaseLog, PlanTier } from '@/lib/types'
 import Link from 'next/link'
 
 function getConfidence(daysOverdue: number, timesChased: number) {
@@ -26,16 +26,27 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: invoiceRow } = await supabase
-    .from('invoices')
-    .select('*')
-    .eq('id', id)
-    .eq('tenant_id', user.id)
-    .single()
+  const [{ data: invoiceRow }, { data: tenant }] = await Promise.all([
+    supabase
+      .from('invoices')
+      .select('*')
+      .eq('id', id)
+      .eq('tenant_id', user.id)
+      .single(),
+    supabase
+      .from('tenants')
+      .select('plan_tier, usage_this_month')
+      .eq('id', user.id)
+      .single(),
+  ])
 
   if (!invoiceRow) notFound()
 
-  const invoice = invoiceRow as Invoice
+  const invoice        = invoiceRow as Invoice
+  const planTier       = (tenant?.plan_tier ?? 'starter') as PlanTier
+  const planLimits     = PLAN_LIMITS[planTier]
+  const usageThisMonth = tenant?.usage_this_month ?? 0
+  const isAtLimit      = planLimits.invoices !== Infinity && usageThisMonth >= planLimits.invoices
 
   const { data: logs } = await supabase
     .from('chase_log')
@@ -43,9 +54,9 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
     .eq('invoice_id', id)
     .order('sent_at', { ascending: false })
 
-  const chaseLogs = (logs ?? []) as ChaseLog[]
+  const chaseLogs   = (logs ?? []) as ChaseLog[]
   const daysOverdue = calcDaysOverdue(invoice.due_date)
-  const confidence = invoice.status !== 'paid' && invoice.status !== 'written_off'
+  const confidence  = invoice.status !== 'paid' && invoice.status !== 'written_off'
     ? getConfidence(daysOverdue, invoice.times_chased)
     : null
 
@@ -66,7 +77,6 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
       </nav>
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-6">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
             <div className="flex items-center gap-3 flex-wrap">
@@ -86,18 +96,20 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
               {invoice.debtor_company ? ` · ${invoice.debtor_company}` : ''}
             </p>
           </div>
-          <InvoiceActions invoiceId={id} status={invoice.status} />
+          <InvoiceActions
+            invoiceId={id}
+            status={invoice.status}
+            planTier={planTier}
+            isAtLimit={isAtLimit}
+          />
         </div>
 
-        {/* Details card */}
         <div className="rounded-2xl bg-white border border-gray-100 shadow-sm p-6">
           <h2 className="text-base font-semibold text-gray-900 mb-4">Invoice details</h2>
           <dl className="grid sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
             <div>
               <dt className="text-gray-400">Amount owed</dt>
-              <dd className="mt-0.5 text-xl font-bold text-gray-900">
-                {formatCurrency(invoice.amount_owed)}
-              </dd>
+              <dd className="mt-0.5 text-xl font-bold text-gray-900">{formatCurrency(invoice.amount_owed)}</dd>
             </div>
             <div>
               <dt className="text-gray-400">Days overdue</dt>
@@ -141,14 +153,11 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
           </dl>
         </div>
 
-        {/* Activity Feed */}
         <div className="rounded-2xl bg-white border border-gray-100 shadow-sm p-6">
           <div className="flex items-center gap-3 mb-6">
             <AriaAvatar size="sm" />
             <div>
-              <h2 className="text-base font-semibold text-gray-900">
-                Aria&apos;s activity
-              </h2>
+              <h2 className="text-base font-semibold text-gray-900">Aria&apos;s activity</h2>
               {chaseLogs.length > 0 && (
                 <p className="text-xs text-gray-400 mt-0.5">{chaseLogs.length} action{chaseLogs.length !== 1 ? 's' : ''} taken</p>
               )}

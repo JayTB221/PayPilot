@@ -2,12 +2,15 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { AriaAvatar } from '@/components/AriaAvatar'
-import type { InvoiceStatus } from '@/lib/types'
+import type { InvoiceStatus, PlanTier } from '@/lib/types'
 
 interface Props {
   invoiceId: string
   status: InvoiceStatus
+  planTier: PlanTier
+  isAtLimit: boolean
 }
 
 const ARIA_STATES: Record<string, string> = {
@@ -16,7 +19,7 @@ const ARIA_STATES: Record<string, string> = {
   'mark-written-off': 'Aria is archiving this invoice…',
 }
 
-export function InvoiceActions({ invoiceId, status }: Props) {
+export function InvoiceActions({ invoiceId, status, planTier, isAtLimit }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState<string | null>(null)
   const [error, setError] = useState('')
@@ -43,7 +46,6 @@ export function InvoiceActions({ invoiceId, status }: Props) {
 
   return (
     <div className="flex flex-col items-end gap-2">
-      {/* Aria loading state */}
       {loading && (
         <div className="flex items-center gap-2 rounded-xl border border-purple-100 bg-purple-50 px-4 py-2">
           <AriaAvatar size="xs" />
@@ -55,21 +57,30 @@ export function InvoiceActions({ invoiceId, status }: Props) {
         </div>
       )}
 
-      {error && (
-        <p className="text-sm text-red-600 text-right">{error}</p>
-      )}
+      {error && <p className="text-sm text-red-600 text-right">{error}</p>}
 
       <div className="flex gap-2 flex-wrap justify-end">
         {!isTerminal && (
           <>
-            <button
-              onClick={() => callAction('chase-now')}
-              disabled={!!loading}
-              className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white
-                         hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Ask Aria to chase
-            </button>
+            {isAtLimit ? (
+              <div className="flex flex-col items-end gap-1">
+                <div className="rounded-lg bg-gray-100 border border-gray-200 px-4 py-2 text-sm text-gray-400 cursor-not-allowed">
+                  Aria is at her monthly limit
+                </div>
+                <Link href="/subscribe" className="text-xs text-blue-600 hover:underline font-medium">
+                  Upgrade to keep chasing →
+                </Link>
+              </div>
+            ) : (
+              <button
+                onClick={() => callAction('chase-now')}
+                disabled={!!loading}
+                className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white
+                           hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Ask Aria to chase
+              </button>
+            )}
             <button
               onClick={() => callAction('mark-paid')}
               disabled={!!loading}
@@ -94,6 +105,13 @@ export function InvoiceActions({ invoiceId, status }: Props) {
           </p>
         )}
       </div>
+
+      {/* SMS upgrade nudge for Starter plan users */}
+      {!isTerminal && planTier === 'starter' && !isAtLimit && (
+        <Link href="/subscribe" className="text-xs text-gray-400 hover:text-blue-600 transition-colors">
+          Upgrade to add SMS follow-up
+        </Link>
+      )}
     </div>
   )
 }

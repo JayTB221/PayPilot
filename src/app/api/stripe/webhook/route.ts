@@ -85,6 +85,20 @@ export async function POST(req: NextRequest) {
       if (userId) await updateSubscription(userId, 'cancelled')
       break
     }
+    case 'customer.subscription.trial_will_end': {
+      const sub = event.data.object as Stripe.Subscription
+      const userId = getUserId(sub)
+      if (userId) {
+        const supabase = await createAdminClient()
+        await supabase.from('notifications').insert({
+          tenant_id: userId,
+          type: 'trial_ending',
+          title: 'Your trial ends in 3 days',
+          body: 'Upgrade now to keep Aria chasing your invoices after your trial ends.',
+        })
+      }
+      break
+    }
   }
 
   return NextResponse.json({ received: true })

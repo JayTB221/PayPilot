@@ -44,16 +44,22 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    // Check that the tenant has an active subscription
     const { data: tenant } = await supabase
       .from('tenants')
-      .select('subscription_status')
+      .select('subscription_status, trial_ends_at')
       .eq('id', user.id)
       .single()
 
-    if (tenant && tenant.subscription_status !== 'active') {
+    const isActive = tenant?.subscription_status === 'active'
+    const trialEndsAt = tenant?.trial_ends_at ? new Date(tenant.trial_ends_at) : null
+    const isOnValidTrial = trialEndsAt !== null && trialEndsAt > new Date()
+
+    if (!isActive && !isOnValidTrial) {
       const url = request.nextUrl.clone()
       url.pathname = '/subscribe'
+      if (trialEndsAt && trialEndsAt <= new Date()) {
+        url.searchParams.set('trial_expired', '1')
+      }
       return NextResponse.redirect(url)
     }
   }

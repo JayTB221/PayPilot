@@ -3,7 +3,8 @@ import { redirect } from 'next/navigation'
 import { logOut } from '@/app/actions/auth'
 import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
-import type { TenantSettings } from '@/lib/types'
+import { SmsUpgradeGate } from '@/components/dashboard/SmsUpgradeGate'
+import type { TenantSettings, PlanTier } from '@/lib/types'
 
 async function disconnectXero() {
   'use server'
@@ -48,11 +49,12 @@ export default async function SettingsPage() {
   if (!user) redirect('/login')
 
   const [{ data: tenant }, { data: settings }] = await Promise.all([
-    supabase.from('tenants').select('business_name, owner_name, email, xero_tenant_id, subscription_status').eq('id', user.id).single(),
+    supabase.from('tenants').select('business_name, owner_name, email, xero_tenant_id, subscription_status, plan_tier').eq('id', user.id).single(),
     supabase.from('tenant_settings').select('*').eq('tenant_id', user.id).single(),
   ])
 
   const s = settings as TenantSettings | null
+  const planTier = (tenant?.plan_tier ?? 'starter') as PlanTier
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -170,11 +172,7 @@ export default async function SettingsPage() {
 
           <div className="border-t border-gray-100 pt-6 space-y-4">
             <h3 className="text-sm font-semibold text-gray-700">SMS settings</h3>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input type="checkbox" name="sms_enabled" defaultChecked={s?.sms_enabled ?? false}
-                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-              <span className="text-sm text-gray-700">Enable SMS follow-ups</span>
-            </label>
+            <SmsUpgradeGate planTier={planTier} defaultChecked={s?.sms_enabled ?? false} />
             <label className="block">
               <span className="text-sm font-medium text-gray-700">Start SMS after (days overdue)</span>
               <input

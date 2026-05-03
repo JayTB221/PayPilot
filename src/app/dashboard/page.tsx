@@ -5,55 +5,14 @@ import { InvoiceTable } from '@/components/dashboard/InvoiceTable'
 import { DashboardActions } from '@/components/dashboard/DashboardActions'
 import { NotificationBell } from '@/components/dashboard/NotificationBell'
 import { AriaStatusCard } from '@/components/dashboard/AriaStatusCard'
+import { UsageBar } from '@/components/dashboard/UsageBar'
+import { WelcomeState } from '@/components/dashboard/WelcomeState'
 import { OnboardingModal } from '@/components/OnboardingModal'
 import { OnboardingChecklist } from '@/components/OnboardingChecklist'
 import { logOut } from '@/app/actions/auth'
 import { PLAN_LIMITS } from '@/lib/utils'
 import type { Invoice, DashboardStats, PlanTier } from '@/lib/types'
 import Link from 'next/link'
-
-const MOCK_INVOICES: Invoice[] = [
-  {
-    id: 'mock-1', tenant_id: '', xero_invoice_id: null,
-    debtor_name: 'Sarah Mitchell', debtor_company: 'Mitchell Design Co',
-    debtor_email: 'sarah@mitchelldesign.com', debtor_phone: '+12025550001',
-    invoice_number: 'INV-1042', amount_owed: 3200, currency: 'USD',
-    due_date: '2026-03-01', days_overdue: 47, status: 'escalated',
-    last_chased_at: '2026-04-10T09:00:00Z', times_chased: 5, created_at: '2026-03-01T00:00:00Z',
-  },
-  {
-    id: 'mock-2', tenant_id: '', xero_invoice_id: null,
-    debtor_name: 'James Thornton', debtor_company: 'Thornton Builders LLC',
-    debtor_email: 'james@thorntonbuilders.com', debtor_phone: null,
-    invoice_number: 'INV-1038', amount_owed: 8750, currency: 'USD',
-    due_date: '2026-03-15', days_overdue: 33, status: 'contacted',
-    last_chased_at: '2026-04-12T10:30:00Z', times_chased: 3, created_at: '2026-03-15T00:00:00Z',
-  },
-  {
-    id: 'mock-3', tenant_id: '', xero_invoice_id: null,
-    debtor_name: 'Aria Nguyen', debtor_company: null,
-    debtor_email: 'aria.nguyen@gmail.com', debtor_phone: '+12025550003',
-    invoice_number: 'INV-1051', amount_owed: 1500, currency: 'USD',
-    due_date: '2026-04-05', days_overdue: 12, status: 'contacted',
-    last_chased_at: '2026-04-15T08:00:00Z', times_chased: 1, created_at: '2026-04-05T00:00:00Z',
-  },
-  {
-    id: 'mock-4', tenant_id: '', xero_invoice_id: null,
-    debtor_name: 'Chen Industries', debtor_company: 'Chen Industries Inc',
-    debtor_email: 'accounts@chenindustries.com', debtor_phone: '+12025550004',
-    invoice_number: 'INV-1029', amount_owed: 12400, currency: 'USD',
-    due_date: '2026-04-10', days_overdue: 7, status: 'pending',
-    last_chased_at: null, times_chased: 0, created_at: '2026-04-10T00:00:00Z',
-  },
-  {
-    id: 'mock-5', tenant_id: '', xero_invoice_id: null,
-    debtor_name: 'Pacific Events Co', debtor_company: 'Pacific Events Group',
-    debtor_email: 'finance@pacificevents.com', debtor_phone: '+12025550005',
-    invoice_number: 'INV-1019', amount_owed: 5600, currency: 'USD',
-    due_date: '2026-02-20', days_overdue: 56, status: 'paid',
-    last_chased_at: '2026-03-15T14:00:00Z', times_chased: 4, created_at: '2026-02-20T00:00:00Z',
-  },
-]
 
 function calcStats(invoices: Invoice[]): DashboardStats {
   const active = invoices.filter(i => !['paid', 'written_off'].includes(i.status))
@@ -72,7 +31,7 @@ export default async function DashboardPage() {
 
   const { data: tenant } = await supabase
     .from('tenants')
-    .select('business_name, owner_name, xero_tenant_id, plan_tier, usage_this_month, onboarding_completed')
+    .select('business_name, owner_name, xero_tenant_id, plan_tier, usage_this_month, onboarding_completed, subscription_status, trial_ends_at')
     .eq('id', user.id)
     .single()
 
@@ -88,9 +47,8 @@ export default async function DashboardPage() {
     .eq('tenant_id', user.id)
     .order('days_overdue', { ascending: false })
 
-  const invoices: Invoice[] = (invoiceRows ?? []).length > 0
-    ? (invoiceRows as Invoice[])
-    : MOCK_INVOICES
+  const hasRealInvoices = (invoiceRows ?? []).length > 0
+  const invoices: Invoice[] = hasRealInvoices ? (invoiceRows as Invoice[]) : []
 
   // Aria activity — today's chase log
   const todayStart = new Date()
@@ -111,24 +69,31 @@ export default async function DashboardPage() {
       .single(),
   ])
 
-  const todayChased = todayLogs?.length ?? 0
+  const todayChased    = todayLogs?.length ?? 0
   const todayResponses = todayLogs?.filter(l => l.response_received).length ?? 0
-  const lastRunAt = lastRunRow?.sent_at ?? null
+  const lastRunAt      = lastRunRow?.sent_at ?? null
 
-  const isMock = (invoiceRows ?? []).length === 0
-  const isXeroConnected = !!tenant?.xero_tenant_id
-  const stats = calcStats(invoices)
-  const planTier = (tenant?.plan_tier ?? 'starter') as PlanTier
-  const planLimits = PLAN_LIMITS[planTier]
+  const isXeroConnected     = !!tenant?.xero_tenant_id
+  const stats               = calcStats(invoices)
+  const planTier            = (tenant?.plan_tier ?? 'starter') as PlanTier
+  const planLimits          = PLAN_LIMITS[planTier]
   const usageThisMonth: number = tenant?.usage_this_month ?? 0
-  const usagePct = planLimits.invoices === Infinity ? 0 : Math.min(100, (usageThisMonth / planLimits.invoices) * 100)
+  const usagePct            = planLimits.invoices === Infinity
+    ? 0
+    : Math.min(100, (usageThisMonth / planLimits.invoices) * 100)
   const onboardingCompleted = tenant?.onboarding_completed ?? false
-  const hasSettings = !!tenantSettings
+  const hasSettings         = !!tenantSettings
+  const isSubscribed        = tenant?.subscription_status === 'active'
+  const isAtLimit           = planLimits.invoices !== Infinity && usageThisMonth >= planLimits.invoices
+
+  // Show welcome state for users with no real invoices yet
+  const showWelcomeState = !hasRealInvoices
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Onboarding modal for new users */}
-      <OnboardingModal isXeroConnected={isXeroConnected} hasInvoices={!isMock} />
+      {!showWelcomeState && (
+        <OnboardingModal isXeroConnected={isXeroConnected} hasInvoices={hasRealInvoices} />
+      )}
 
       <nav className="bg-white border-b border-gray-100 px-4 sm:px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
@@ -141,17 +106,16 @@ export default async function DashboardPage() {
             </span>
           </div>
           <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-            {/* Plan usage — desktop only */}
             {planLimits.invoices !== Infinity ? (
               <div className="hidden md:flex items-center gap-2">
-                <div className="w-20 h-1.5 rounded-full bg-gray-200 overflow-hidden">
+                <div className={`w-20 h-1.5 rounded-full overflow-hidden ${usagePct >= 96 ? 'bg-red-100' : usagePct >= 80 ? 'bg-amber-100' : 'bg-gray-200'}`}>
                   <div
-                    className={`h-full rounded-full transition-all ${usagePct >= 90 ? 'bg-red-500' : usagePct >= 70 ? 'bg-yellow-500' : 'bg-blue-500'}`}
+                    className={`h-full rounded-full transition-all ${usagePct >= 96 ? 'bg-red-500' : usagePct >= 80 ? 'bg-amber-500' : 'bg-blue-500'}`}
                     style={{ width: `${usagePct}%` }}
                   />
                 </div>
                 <span className="text-xs text-gray-400 whitespace-nowrap">
-                  {usageThisMonth}/{planLimits.invoices}
+                  {usageThisMonth}/{planLimits.invoices} invoices
                 </span>
               </div>
             ) : (
@@ -178,50 +142,82 @@ export default async function DashboardPage() {
               Hi {tenant?.owner_name ?? 'there'} — here&apos;s what&apos;s outstanding
             </p>
           </div>
-
-          {/* Client component handles modal state + Xero button */}
           <DashboardActions isXeroConnected={isXeroConnected} />
         </div>
 
-        {/* Aria status card */}
-        <AriaStatusCard
-          isXeroConnected={isXeroConnected}
-          ownerName={tenant?.owner_name ?? null}
-          lastRunAt={lastRunAt}
-          todayChased={todayChased}
-          todayResponses={todayResponses}
-        />
-
-        {/* Onboarding checklist for new users */}
-        {!onboardingCompleted && (
-          <OnboardingChecklist
-            hasXero={isXeroConnected}
-            hasInvoices={!isMock}
+        {/* ── Welcome state: brand new users with no invoices ───────────── */}
+        {showWelcomeState && (
+          <WelcomeState
+            ownerName={tenant?.owner_name ?? null}
+            isXeroConnected={isXeroConnected}
+            hasInvoices={hasRealInvoices}
             hasSettings={hasSettings}
             onboardingCompleted={onboardingCompleted}
           />
         )}
 
-        {isMock && (
-          <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
-            <strong>Demo data</strong> — these are sample invoices so you can see how PayPilot looks.
-            Click <strong>+ Add Invoices</strong> to import your real invoices via CSV.
-          </div>
+        {/* ── Full dashboard: users with real invoices ──────────────────── */}
+        {!showWelcomeState && (
+          <>
+            <AriaStatusCard
+              isXeroConnected={isXeroConnected}
+              ownerName={tenant?.owner_name ?? null}
+              lastRunAt={lastRunAt}
+              todayChased={todayChased}
+              todayResponses={todayResponses}
+            />
+
+            {!onboardingCompleted && (
+              <OnboardingChecklist
+                hasXero={isXeroConnected}
+                hasInvoices={hasRealInvoices}
+                hasSettings={hasSettings}
+                onboardingCompleted={onboardingCompleted}
+              />
+            )}
+
+            {/* Usage at 100% — hard lock banner */}
+            {isAtLimit && (
+              <div className="rounded-xl bg-red-50 border border-red-200 px-5 py-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-red-800">Aria has reached your monthly limit</p>
+                    <p className="text-sm text-red-700 mt-0.5">
+                      She&apos;s paused chasing until you upgrade. You still have{' '}
+                      <strong>{invoices.filter(i => !['paid','written_off'].includes(i.status)).length} invoices</strong> outstanding.
+                    </p>
+                  </div>
+                  <Link
+                    href="/subscribe"
+                    className="flex-shrink-0 rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
+                  >
+                    Upgrade now →
+                  </Link>
+                </div>
+              </div>
+            )}
+
+            {/* Usage at 80–99% — amber warning */}
+            {usagePct >= 80 && !isAtLimit && planLimits.invoices !== Infinity && (
+              <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800 flex items-center justify-between gap-4">
+                <span>
+                  Aria is approaching your monthly limit ({usageThisMonth}/{planLimits.invoices} invoices).{' '}
+                  <Link href="/subscribe" className="underline font-semibold">
+                    Upgrade to {planTier === 'starter' ? 'Professional for 200 invoices/month' : 'Enterprise for unlimited'}
+                  </Link>
+                </span>
+              </div>
+            )}
+
+            <StatsBar stats={stats} />
+            <UsageBar usageThisMonth={usageThisMonth} planTier={planTier} />
+
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">Invoices</h2>
+              <InvoiceTable invoices={invoices} />
+            </div>
+          </>
         )}
-
-        {usagePct >= 90 && planLimits.invoices !== Infinity && (
-          <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
-            <strong>Usage limit approaching</strong> — you&apos;ve used {usageThisMonth} of {planLimits.invoices} invoice chases this month.{' '}
-            <Link href="/subscribe" className="underline font-medium">Upgrade your plan</Link> to chase more.
-          </div>
-        )}
-
-        <StatsBar stats={stats} />
-
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">Invoices</h2>
-          <InvoiceTable invoices={invoices} />
-        </div>
       </main>
     </div>
   )

@@ -53,6 +53,7 @@ export async function GET(req: NextRequest) {
       xero_refresh_token: tokens.refresh_token,
       xero_tenant_id: xeroTenantId,
       xero_token_expiry: expiry,
+      xero_last_synced_at: new Date().toISOString(),
     })
     .eq('id', state)
 

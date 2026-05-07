@@ -2,8 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { resend } from '@/lib/resend'
 import { formatCurrency } from '@/lib/utils'
+import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
+
+const EMAIL_KEY = 'trial_expired'
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for') ?? 'unknown'
+  const { allowed } = rateLimit(`trial-expired:${ip}`, 10, 60 * 60 * 1000)
+  if (!allowed) return rateLimitResponse()
+
   const authHeader = req.headers.get('authorization')
   const secret = process.env.WEEKLY_SUMMARY_SECRET
   if (secret && authHeader !== `Bearer ${secret}`) {
@@ -25,7 +32,7 @@ export async function POST(req: NextRequest) {
 
   let query = supabase
     .from('tenants')
-    .select('id, email, owner_name, business_name, trial_ends_at, subscription_status')
+    .select('id, email, owner_name, business_name, trial_ends_at, subscription_status, trial_emails_sent')
 
   if (specificTenantId) {
     query = query.eq('id', specificTenantId)
@@ -38,8 +45,15 @@ export async function POST(req: NextRequest) {
   if (!tenants?.length) return NextResponse.json({ sent: 0 })
 
   let sent = 0
+  let skipped = 0
 
   for (const tenant of tenants) {
+    // Deduplication: skip if this email was already sent to this tenant
+    if ((tenant.trial_emails_sent ?? []).includes(EMAIL_KEY)) {
+      skipped++
+      continue
+    }
+
     const { data: chaseLogs } = await supabase
       .from('chase_log')
       .select('id, response_received')
@@ -122,11 +136,14 @@ export async function POST(req: NextRequest) {
         subject: `Your Aria trial has ended — ${formatCurrency(totalOutstanding)} is still outstanding`,
         html,
       })
+      // Mark this email type as sent so it never fires again for this tenant
+      const updated = [...(tenant.trial_emails_sent ?? []), EMAIL_KEY]
+      await supabase.from('tenants').update({ trial_emails_sent: updated }).eq('id', tenant.id)
       sent++
     } catch {
       // Continue to next tenant
     }
   }
 
-  return NextResponse.json({ sent, total: tenants.length })
+  return NextResponse.json({ sent, skipped, total: tenants.length })
 }

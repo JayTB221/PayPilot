@@ -11,17 +11,20 @@ interface Props {
   status: InvoiceStatus
   planTier: PlanTier
   isAtLimit: boolean
+  chasePaused: boolean
 }
 
 const ARIA_STATES: Record<string, string> = {
   'chase-now':        'Aria is writing a follow-up…',
   'mark-paid':        'Aria is updating the record…',
   'mark-written-off': 'Aria is archiving this invoice…',
+  'toggle-pause':     'Updating pause status…',
 }
 
-export function InvoiceActions({ invoiceId, status, planTier, isAtLimit }: Props) {
+export function InvoiceActions({ invoiceId, status, planTier, isAtLimit, chasePaused }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState<string | null>(null)
+  const [paused, setPaused] = useState(chasePaused)
   const [error, setError] = useState('')
 
   async function callAction(action: string) {
@@ -33,7 +36,12 @@ export function InvoiceActions({ invoiceId, status, planTier, isAtLimit }: Props
         const data = await res.json()
         setError(data.error ?? 'Something went wrong')
       } else {
-        router.refresh()
+        if (action === 'toggle-pause') {
+          const data = await res.json()
+          setPaused(data.chase_paused)
+        } else {
+          router.refresh()
+        }
       }
     } catch {
       setError('Network error — please try again')
@@ -62,7 +70,13 @@ export function InvoiceActions({ invoiceId, status, planTier, isAtLimit }: Props
       <div className="flex gap-2 flex-wrap justify-end">
         {!isTerminal && (
           <>
-            {isAtLimit ? (
+            {paused ? (
+              <div className="flex flex-col items-end gap-1">
+                <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-2 text-sm text-amber-700 cursor-not-allowed">
+                  Aria is paused for this invoice
+                </div>
+              </div>
+            ) : isAtLimit ? (
               <div className="flex flex-col items-end gap-1">
                 <div className="rounded-lg bg-gray-100 border border-gray-200 px-4 py-2 text-sm text-gray-400 cursor-not-allowed">
                   Aria is at her monthly limit
@@ -106,8 +120,23 @@ export function InvoiceActions({ invoiceId, status, planTier, isAtLimit }: Props
         )}
       </div>
 
+      {/* Pause / Resume toggle */}
+      {!isTerminal && (
+        <button
+          onClick={() => callAction('toggle-pause')}
+          disabled={!!loading}
+          className={`text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+            paused
+              ? 'text-green-600 hover:text-green-800'
+              : 'text-amber-600 hover:text-amber-800'
+          }`}
+        >
+          {paused ? '▶ Resume Aria for this invoice' : '⏸ Pause Aria for this invoice'}
+        </button>
+      )}
+
       {/* SMS upgrade nudge for Starter plan users */}
-      {!isTerminal && planTier === 'starter' && !isAtLimit && (
+      {!isTerminal && !paused && planTier === 'starter' && !isAtLimit && (
         <Link href="/subscribe" className="text-xs text-gray-400 hover:text-blue-600 transition-colors">
           Upgrade to add SMS follow-up
         </Link>

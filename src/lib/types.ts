@@ -19,11 +19,14 @@ export interface Tenant {
   usage_this_month: number
   trial_started_at: string | null
   trial_ends_at: string | null
+  trial_emails_sent: string[] | null
   onboarding_completed: boolean
+  onboarding_modal_dismissed_at: string | null
   xero_access_token: string | null
   xero_refresh_token: string | null
   xero_tenant_id: string | null
   xero_token_expiry: string | null
+  xero_last_synced_at: string | null
   created_at: string
 }
 
@@ -41,6 +44,7 @@ export interface Invoice {
   due_date: string
   days_overdue: number
   status: InvoiceStatus
+  chase_paused: boolean
   last_chased_at: string | null
   times_chased: number
   created_at: string

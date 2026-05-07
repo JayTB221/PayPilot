@@ -92,7 +92,16 @@ export function InvoiceTable({ invoices }: { invoices: Invoice[] }) {
                     <td className="px-4 py-3 text-right">
                       <span className={`font-medium ${overdueCls(inv.days_overdue)}`}>{inv.days_overdue}d</span>
                     </td>
-                    <td className="px-4 py-3"><StatusBadge status={inv.status} /></td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <StatusBadge status={inv.status} />
+                        {inv.chase_paused && (
+                          <span className="rounded-full bg-amber-100 border border-amber-200 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                            ⏸ Paused
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-4 py-3">
                       {confidence ? (
                         <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${confidence.cls}`}>
@@ -140,6 +149,11 @@ export function InvoiceTable({ invoices }: { invoices: Invoice[] }) {
                     )}
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
                       <StatusBadge status={inv.status} />
+                      {inv.chase_paused && (
+                        <span className="rounded-full bg-amber-100 border border-amber-200 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                          ⏸ Paused
+                        </span>
+                      )}
                       <span className={`text-xs font-medium ${overdueCls(inv.days_overdue)}`}>
                         {inv.days_overdue}d overdue
                       </span>

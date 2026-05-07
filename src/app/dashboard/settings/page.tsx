@@ -4,6 +4,7 @@ import { logOut } from '@/app/actions/auth'
 import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
 import { SmsUpgradeGate } from '@/components/dashboard/SmsUpgradeGate'
+import { ManageSubscriptionButton } from '@/components/dashboard/ManageSubscriptionButton'
 import type { TenantSettings, PlanTier } from '@/lib/types'
 
 async function disconnectXero() {
@@ -96,13 +97,14 @@ export default async function SettingsPage() {
             </div>
             <div>
               <dt className="text-gray-400">Subscription</dt>
-              <dd className="mt-0.5">
+              <dd className="mt-0.5 flex items-center gap-3 flex-wrap">
                 <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold
                   ${tenant?.subscription_status === 'active'
                     ? 'bg-green-100 text-green-700'
                     : 'bg-yellow-100 text-yellow-700'}`}>
                   {tenant?.subscription_status ?? 'inactive'}
                 </span>
+                {tenant?.subscription_status === 'active' && <ManageSubscriptionButton />}
               </dd>
             </div>
             <div>

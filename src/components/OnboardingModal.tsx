@@ -6,20 +6,30 @@ import { AriaAvatar } from '@/components/AriaAvatar'
 interface Props {
   isXeroConnected: boolean
   hasInvoices: boolean
+  alreadyDismissed: boolean
 }
 
-export function OnboardingModal({ isXeroConnected, hasInvoices }: Props) {
-  const [dismissed, setDismissed] = useState(false)
+async function persistDismissal() {
+  await fetch('/api/onboarding/dismiss-modal', { method: 'POST' })
+}
+
+export function OnboardingModal({ isXeroConnected, hasInvoices, alreadyDismissed }: Props) {
+  const [dismissed, setDismissed] = useState(alreadyDismissed)
 
   if (dismissed || (isXeroConnected && hasInvoices)) return null
 
   const step = !isXeroConnected ? 1 : !hasInvoices ? 2 : 3
 
+  function dismiss() {
+    persistDismissal()
+    setDismissed(true)
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
       <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-gray-900 p-8 shadow-2xl">
         <button
-          onClick={() => setDismissed(true)}
+          onClick={dismiss}
           className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors text-lg leading-none"
           aria-label="Dismiss"
         >
@@ -55,7 +65,7 @@ export function OnboardingModal({ isXeroConnected, hasInvoices }: Props) {
             </a>
             <p className="mt-4 text-center text-xs text-gray-600">
               Don&apos;t use Xero?{' '}
-              <button onClick={() => setDismissed(true)} className="underline hover:text-gray-400 transition-colors">
+              <button onClick={dismiss} className="underline hover:text-gray-400 transition-colors">
                 Skip — I&apos;ll upload a CSV
               </button>
             </p>
@@ -83,7 +93,7 @@ export function OnboardingModal({ isXeroConnected, hasInvoices }: Props) {
               </svg>
             </div>
             <button
-              onClick={() => setDismissed(true)}
+              onClick={dismiss}
               className="mt-4 block w-full text-center text-sm text-gray-600 hover:text-gray-400 transition-colors"
             >
               Continue to dashboard
@@ -104,7 +114,7 @@ export function OnboardingModal({ isXeroConnected, hasInvoices }: Props) {
               I&apos;ll start chasing your overdue invoices tonight. You&apos;ll receive a morning briefing from me after my first run — check back tomorrow.
             </p>
             <button
-              onClick={() => setDismissed(true)}
+              onClick={dismiss}
               className="block w-full rounded-xl bg-purple-600 py-3 text-center text-sm font-semibold text-white hover:bg-purple-500 transition-all"
             >
               Let&apos;s go →

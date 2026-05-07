@@ -8,8 +8,19 @@ interface Props {
   isXeroConnected: boolean
   ownerName: string | null
   lastRunAt: string | null
+  xeroLastSyncedAt: string | null
   todayChased: number
   todayResponses: number
+}
+
+function timeSince(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime()
+  const mins   = Math.floor(diffMs / 60_000)
+  if (mins < 60)  return `${mins} minute${mins !== 1 ? 's' : ''} ago`
+  const hours  = Math.floor(diffMs / 3_600_000)
+  if (hours < 24) return `${hours} hour${hours !== 1 ? 's' : ''} ago`
+  const days   = Math.floor(diffMs / 86_400_000)
+  return `${days} day${days !== 1 ? 's' : ''} ago`
 }
 
 function useNextRunCountdown() {
@@ -34,7 +45,7 @@ function useNextRunCountdown() {
   return countdown
 }
 
-export function AriaStatusCard({ isXeroConnected, ownerName, lastRunAt, todayChased, todayResponses }: Props) {
+export function AriaStatusCard({ isXeroConnected, ownerName, lastRunAt, xeroLastSyncedAt, todayChased, todayResponses }: Props) {
   const countdown = useNextRunCountdown()
 
   if (!isXeroConnected) {
@@ -78,6 +89,11 @@ export function AriaStatusCard({ isXeroConnected, ownerName, lastRunAt, todayCha
               </p>
             ) : (
               <p className="text-xs text-gray-500 mt-0.5">Waiting for first run</p>
+            )}
+            {xeroLastSyncedAt && (
+              <p className="text-xs text-gray-400 mt-0.5">
+                Xero synced {timeSince(xeroLastSyncedAt)}
+              </p>
             )}
           </div>
         </div>

@@ -84,6 +84,11 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
                 {invoice.invoice_number ?? `Invoice ${id.slice(0, 8)}`}
               </h1>
               <StatusBadge status={invoice.status} />
+              {invoice.chase_paused && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 border border-amber-200 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
+                  ⏸ Paused
+                </span>
+              )}
               {confidence && (
                 <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${confidence.cls}`}>
                   <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
@@ -101,6 +106,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
             status={invoice.status}
             planTier={planTier}
             isAtLimit={isAtLimit}
+            chasePaused={invoice.chase_paused ?? false}
           />
         </div>
 

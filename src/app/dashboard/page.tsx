@@ -31,7 +31,7 @@ export default async function DashboardPage() {
 
   const { data: tenant } = await supabase
     .from('tenants')
-    .select('business_name, owner_name, xero_tenant_id, plan_tier, usage_this_month, onboarding_completed, subscription_status, trial_ends_at')
+    .select('business_name, owner_name, xero_tenant_id, plan_tier, usage_this_month, onboarding_completed, onboarding_modal_dismissed_at, subscription_status, trial_ends_at, xero_last_synced_at')
     .eq('id', user.id)
     .single()
 
@@ -81,10 +81,12 @@ export default async function DashboardPage() {
   const usagePct            = planLimits.invoices === Infinity
     ? 0
     : Math.min(100, (usageThisMonth / planLimits.invoices) * 100)
-  const onboardingCompleted = tenant?.onboarding_completed ?? false
-  const hasSettings         = !!tenantSettings
-  const isSubscribed        = tenant?.subscription_status === 'active'
-  const isAtLimit           = planLimits.invoices !== Infinity && usageThisMonth >= planLimits.invoices
+  const onboardingCompleted        = tenant?.onboarding_completed ?? false
+  const modalAlreadyDismissed      = !!tenant?.onboarding_modal_dismissed_at
+  const xeroLastSyncedAt           = tenant?.xero_last_synced_at ?? null
+  const hasSettings                = !!tenantSettings
+  const isSubscribed               = tenant?.subscription_status === 'active'
+  const isAtLimit                  = planLimits.invoices !== Infinity && usageThisMonth >= planLimits.invoices
 
   // Show welcome state for users with no real invoices yet
   const showWelcomeState = !hasRealInvoices
@@ -92,7 +94,11 @@ export default async function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {!showWelcomeState && (
-        <OnboardingModal isXeroConnected={isXeroConnected} hasInvoices={hasRealInvoices} />
+        <OnboardingModal
+          isXeroConnected={isXeroConnected}
+          hasInvoices={hasRealInvoices}
+          alreadyDismissed={modalAlreadyDismissed}
+        />
       )}
 
       <nav className="bg-white border-b border-gray-100 px-4 sm:px-6 py-4">
@@ -122,7 +128,7 @@ export default async function DashboardPage() {
               <span className="hidden md:inline text-xs text-gray-400 capitalize">{planLimits.label}</span>
             )}
             <NotificationBell />
-            <Link href="/dashboard/settings" className="hidden sm:inline text-sm text-gray-500 hover:text-gray-700">
+            <Link href="/dashboard/settings" className="text-sm text-gray-500 hover:text-gray-700">
               Settings
             </Link>
             <form action={logOut}>
@@ -163,6 +169,7 @@ export default async function DashboardPage() {
               isXeroConnected={isXeroConnected}
               ownerName={tenant?.owner_name ?? null}
               lastRunAt={lastRunAt}
+              xeroLastSyncedAt={xeroLastSyncedAt}
               todayChased={todayChased}
               todayResponses={todayResponses}
             />

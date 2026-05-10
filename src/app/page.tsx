@@ -1,20 +1,82 @@
 'use client'
 
-import { motion, useInView, type Variants } from 'framer-motion'
-import { useRef, useState } from 'react'
+import { motion, useInView, useReducedMotion, type Variants } from 'framer-motion'
+import { useRef, useState, useEffect } from 'react'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
+
+// ── Lazy-load animation-heavy components ──────────────────────────────────────
+
+const InvoiceStack = dynamic(
+  () => import('@/components/landing/InvoiceStack').then(m => m.InvoiceStack),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-[320px] h-[420px] rounded-2xl bg-white/[0.03] border border-white/[0.08] animate-pulse" />
+    ),
+  }
+)
+
+const ChaseTimeline = dynamic(
+  () => import('@/components/landing/ChaseTimeline').then(m => m.ChaseTimeline),
+  {
+    ssr: false,
+    loading: () => <div className="h-[560px] rounded-2xl bg-white/[0.02] animate-pulse" />,
+  }
+)
+
+const AriaTyping = dynamic(
+  () => import('@/components/landing/AriaTyping').then(m => m.AriaTyping),
+  {
+    ssr: false,
+    loading: () => <div className="h-[380px] rounded-2xl bg-white/[0.02] animate-pulse max-w-2xl mx-auto w-full" />,
+  }
+)
+
+// ── Global keyframes (injected once) ─────────────────────────────────────────
+
+const GLOBAL_STYLES = `
+  @keyframes gradientShift {
+    0%   { background-position: 0%   50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0%   50%; }
+  }
+  .animate-gradient-text {
+    background-size: 200% 200%;
+    animation: gradientShift 3s ease infinite;
+  }
+  @keyframes gradientBorder {
+    0%   { background-position: 0%   50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0%   50%; }
+  }
+  .animate-gradient-border {
+    background-size: 200% 200%;
+    animation: gradientBorder 4s linear infinite;
+  }
+`
 
 // ── Animation variants ────────────────────────────────────────────────────────
+
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 24 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } },
 }
+
 const stagger: Variants = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.1 } },
 }
 
-function Section({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+// ── Scroll-triggered section wrapper ─────────────────────────────────────────
+
+function Section({
+  children,
+  className = '',
+}: {
+  children: React.ReactNode
+  className?: string
+}) {
   const ref = useRef(null)
   const inView = useInView(ref, { once: true, margin: '-80px' })
   return (
@@ -30,99 +92,83 @@ function Section({ children, className = '' }: { children: React.ReactNode; clas
   )
 }
 
-// ── Dashboard preview mockup ──────────────────────────────────────────────────
-function DashboardMockup() {
-  const invoices = [
-    { name: 'Mitchell Design Co', amount: '$3,200', days: '47d', status: 'Escalated', color: 'text-red-400' },
-    { name: 'Thornton Builders Ltd', amount: '$8,750', days: '33d', status: 'Contacted', color: 'text-blue-400' },
-    { name: 'Chen Industries', amount: '$12,400', days: '7d', status: 'Pending', color: 'text-gray-400' },
-  ]
+// ── Count-up stat ─────────────────────────────────────────────────────────────
+
+interface StatItem {
+  prefix: string
+  value: number
+  suffix: string
+  label: string
+  decimals?: number
+}
+
+const STATS: StatItem[] = [
+  { prefix: '', value: 3.2, suffix: '×', label: 'faster invoice recovery', decimals: 1 },
+  { prefix: '', value: 94,  suffix: '%', label: 'of clients pay within 2 contacts' },
+  { prefix: '', value: 4,   suffix: ' hrs', label: 'saved per week on average' },
+  { prefix: '$', value: 18, suffix: 'k', label: 'average recovered in first month' },
+]
+
+function CountUpStat({ stat }: { stat: StatItem }) {
+  const ref = useRef<HTMLParagraphElement>(null)
+  const inView = useInView(ref, { once: true, margin: '-40px' })
+  const prefersReduced = useReducedMotion()
+  const [displayed, setDisplayed] = useState(0)
+
+  useEffect(() => {
+    if (!inView || prefersReduced) {
+      if (inView) setDisplayed(stat.value)
+      return
+    }
+    const start = performance.now()
+    const duration = 2000
+
+    const raf = (now: number) => {
+      const elapsed = now - start
+      const progress = Math.min(elapsed / duration, 1)
+      // easeOut
+      const eased = 1 - Math.pow(1 - progress, 3)
+      setDisplayed(eased * stat.value)
+      if (progress < 1) requestAnimationFrame(raf)
+    }
+    requestAnimationFrame(raf)
+  }, [inView, prefersReduced, stat.value])
+
+  const formatted =
+    stat.decimals !== undefined
+      ? displayed.toFixed(stat.decimals)
+      : Math.round(displayed).toString()
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 40, rotateX: 8 }}
-      animate={{ opacity: 1, y: 0, rotateX: 0 }}
-      transition={{ duration: 0.9, delay: 0.3, ease: 'easeOut' }}
-      style={{ perspective: 1200 }}
-      className="relative w-full max-w-3xl mx-auto"
-    >
-      {/* Glow behind the card */}
-      <div className="absolute inset-0 -z-10 rounded-2xl blur-3xl opacity-30 bg-gradient-to-br from-blue-600 via-violet-600 to-transparent scale-110" />
-
-      {/* Browser chrome */}
-      <div className="rounded-2xl border border-white/10 bg-gray-950/80 backdrop-blur-sm shadow-2xl overflow-hidden">
-        {/* Tab bar */}
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-white/5 bg-gray-900/60">
-          <span className="h-3 w-3 rounded-full bg-red-400/70" />
-          <span className="h-3 w-3 rounded-full bg-yellow-400/70" />
-          <span className="h-3 w-3 rounded-full bg-green-400/70" />
-          <div className="flex-1 mx-4 h-5 rounded-md bg-white/5 text-[10px] text-white/20 px-3 flex items-center font-mono">
-            paypilot.app/dashboard
-          </div>
-        </div>
-
-        {/* Dashboard content */}
-        <div className="p-4 space-y-3">
-          {/* Nav */}
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-white">Pay<span className="text-blue-400">Pilot</span></span>
-            <div className="flex gap-2">
-              <span className="rounded-full bg-green-500/20 border border-green-500/30 px-2 py-0.5 text-[9px] text-green-400 font-medium">● Xero connected</span>
-            </div>
-          </div>
-
-          {/* Stat cards */}
-          <div className="grid grid-cols-4 gap-2">
-            {[
-              { label: 'Chasing', value: '12' },
-              { label: 'Outstanding', value: '$47k' },
-              { label: 'Recovered', value: '$18k' },
-              { label: 'Recovery rate', value: '73%' },
-            ].map(s => (
-              <div key={s.label} className="rounded-lg bg-white/5 border border-white/5 px-2 py-2">
-                <p className="text-[9px] text-gray-500">{s.label}</p>
-                <p className="text-sm font-bold text-white">{s.value}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Invoice table */}
-          <div className="rounded-lg border border-white/5 overflow-hidden">
-            <div className="grid grid-cols-4 gap-2 px-3 py-1.5 bg-white/5 text-[9px] text-gray-500 uppercase tracking-wide">
-              <span>Debtor</span><span>Amount</span><span>Overdue</span><span>Status</span>
-            </div>
-            {invoices.map((inv, i) => (
-              <motion.div
-                key={inv.name}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.6 + i * 0.1 }}
-                className="grid grid-cols-4 gap-2 px-3 py-2 border-t border-white/5 text-[10px] items-center"
-              >
-                <span className="text-gray-300 truncate">{inv.name}</span>
-                <span className="text-white font-semibold">{inv.amount}</span>
-                <span className="text-orange-400">{inv.days}</span>
-                <span className={`font-medium ${inv.color}`}>{inv.status}</span>
-              </motion.div>
-            ))}
-          </div>
-
-          {/* Chase now badge */}
-          <div className="flex justify-end">
-            <span className="rounded-lg bg-blue-600/20 border border-blue-500/30 px-3 py-1 text-[10px] text-blue-400 font-medium">
-              Aria chasing 3 invoices now...
-            </span>
-          </div>
-        </div>
-      </div>
-    </motion.div>
+    <div className="text-center">
+      <p
+        ref={ref}
+        className="text-4xl font-extrabold bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent"
+      >
+        {stat.prefix}{formatted}{stat.suffix}
+      </p>
+      <p className="mt-1 text-sm text-gray-500">{stat.label}</p>
+    </div>
   )
 }
 
-// ── Landing pricing ──────────────────────────────────────────────────────────
-const LANDING_PLANS = [
+// ── Pricing data & component ──────────────────────────────────────────────────
+
+interface Plan {
+  name: string
+  monthlyPrice: number
+  annualPrice: number
+  description: string
+  features: string[]
+  highlight: boolean
+  badge?: string
+}
+
+const PLANS: Plan[] = [
   {
-    name: 'Starter', monthlyPrice: 99, annualPrice: 82,
+    name: 'Starter',
+    monthlyPrice: 99,
+    annualPrice: 82,
     description: 'Perfect for freelancers and small businesses.',
     features: [
       '14-day free trial, no credit card',
@@ -135,7 +181,9 @@ const LANDING_PLANS = [
     highlight: false,
   },
   {
-    name: 'Professional', monthlyPrice: 249, annualPrice: 207,
+    name: 'Professional',
+    monthlyPrice: 249,
+    annualPrice: 207,
     description: 'For growing businesses that need email and SMS recovery.',
     features: [
       '14-day free trial, no credit card',
@@ -147,10 +195,13 @@ const LANDING_PLANS = [
       'Downloadable chase reports',
       'Priority email support',
     ],
-    highlight: true, badge: 'Most popular',
+    highlight: true,
+    badge: 'Most popular',
   },
   {
-    name: 'Enterprise', monthlyPrice: 499, annualPrice: 415,
+    name: 'Enterprise',
+    monthlyPrice: 499,
+    annualPrice: 415,
     description: 'For agencies and high-volume teams.',
     features: [
       '14-day free trial, no credit card',
@@ -169,72 +220,92 @@ const LANDING_PLANS = [
 
 function LandingPricing() {
   const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly')
+
   return (
     <Section className="max-w-6xl mx-auto px-6 py-24">
       <motion.div variants={fadeUp} className="text-center mb-10">
-        <p className="text-sm font-semibold text-blue-400 uppercase tracking-widest mb-3">Pricing</p>
+        <p className="text-sm font-semibold text-blue-400 uppercase tracking-widest mb-3">
+          Pricing
+        </p>
         <h2 className="text-4xl font-bold text-white">Simple, transparent pricing</h2>
-        <p className="mt-3 text-gray-500">14-day free trial on all plans. No credit card required. Cancel anytime.</p>
-        <div className="mt-6 inline-flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 p-1">
-          <button onClick={() => setBilling('monthly')}
-            className={`rounded-lg px-5 py-2 text-sm font-medium transition-all ${billing === 'monthly' ? 'bg-white text-gray-900 shadow' : 'text-gray-400 hover:text-white'}`}>
-            Monthly
-          </button>
-          <button onClick={() => setBilling('annual')}
-            className={`rounded-lg px-5 py-2 text-sm font-medium transition-all flex items-center gap-2 ${billing === 'annual' ? 'bg-white text-gray-900 shadow' : 'text-gray-400 hover:text-white'}`}>
-            Annual
-            <span className="rounded-full bg-green-500/20 border border-green-500/30 px-2 py-0.5 text-[10px] font-semibold text-green-400">2 months free</span>
-          </button>
+        <p className="mt-3 text-gray-500">
+          14-day free trial on all plans. No credit card required. Cancel anytime.
+        </p>
+
+        {/* Billing toggle */}
+        <div className="mt-6 inline-flex items-center gap-1 rounded-xl p-1 bg-white/[0.04] border border-white/[0.08]">
+          {(['monthly', 'annual'] as const).map(b => (
+            <button
+              key={b}
+              onClick={() => setBilling(b)}
+              className={`rounded-lg px-5 py-2 text-sm font-medium transition-all capitalize flex items-center gap-2 ${
+                billing === b
+                  ? 'bg-white text-gray-900 shadow'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              {b}
+              {b === 'annual' && (
+                <span className="rounded-full bg-green-500/20 border border-green-500/30 px-2 py-0.5 text-[10px] font-semibold text-green-400">
+                  2 months free
+                </span>
+              )}
+            </button>
+          ))}
         </div>
       </motion.div>
 
       <div className="grid sm:grid-cols-3 gap-5">
-        {LANDING_PLANS.map(plan => {
+        {PLANS.map(plan => {
           const price = billing === 'monthly' ? plan.monthlyPrice : plan.annualPrice
+
+          if (plan.highlight) {
+            return (
+              <motion.div key={plan.name} variants={fadeUp} className="relative">
+                {/* Animated gradient border wrapper */}
+                <div
+                  className="absolute inset-0 rounded-2xl animate-gradient-border"
+                  style={{
+                    background:
+                      'linear-gradient(135deg, #3b82f6, #7c3aed, #3b82f6)',
+                    padding: 1,
+                    zIndex: 0,
+                  }}
+                  aria-hidden
+                />
+                {/* Card */}
+                <div
+                  className="relative rounded-2xl p-7 flex flex-col h-full"
+                  style={{
+                    background: 'rgba(23,37,84,0.6)',
+                    backdropFilter: 'blur(8px)',
+                    zIndex: 1,
+                    margin: 1,
+                    borderRadius: 15,
+                    boxShadow:
+                      '0 0 0 1px rgba(59,130,246,0.1), 0 25px 50px rgba(59,130,246,0.1)',
+                  }}
+                >
+                  {plan.badge && (
+                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                      <span className="rounded-full bg-blue-600 px-4 py-1 text-xs font-semibold text-white shadow-lg shadow-blue-600/30">
+                        {plan.badge}
+                      </span>
+                    </div>
+                  )}
+                  <PlanCardContent plan={plan} price={price} billing={billing} highlighted />
+                </div>
+              </motion.div>
+            )
+          }
+
           return (
-            <motion.div key={plan.name} variants={fadeUp}
-              className={`relative rounded-2xl border p-7 flex flex-col transition-all duration-300 ${
-                plan.highlight
-                  ? 'border-blue-500/50 bg-blue-950/30 shadow-2xl shadow-blue-500/10'
-                  : 'border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.05]'
-              }`}>
-              {plan.highlight && (
-                <div className="absolute inset-0 rounded-2xl opacity-30"
-                  style={{ background: 'radial-gradient(circle at 50% 0%, rgba(59,130,246,0.2), transparent 60%)' }} />
-              )}
-              {'badge' in plan && plan.badge && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="rounded-full bg-blue-600 px-4 py-1 text-xs font-semibold text-white shadow-lg shadow-blue-600/30">{plan.badge}</span>
-                </div>
-              )}
-              <div className="relative flex flex-col flex-1">
-                <p className="text-sm font-semibold text-gray-400 uppercase tracking-widest">{plan.name}</p>
-                <div className="mt-3 flex items-baseline gap-1">
-                  <span className="text-xs text-gray-500 mb-1">USD</span>
-                  <span className="text-4xl font-extrabold text-white">${price}</span>
-                  <span className="text-gray-500 text-sm">/mo</span>
-                </div>
-                {billing === 'annual' && (
-                  <p className="mt-1 text-xs text-green-400">${price * 12}/yr · save ${(plan.monthlyPrice - price) * 12}/yr</p>
-                )}
-                <p className="mt-3 text-sm text-gray-500 leading-relaxed">{plan.description}</p>
-                <ul className="mt-5 space-y-2.5 flex-1">
-                  {plan.features.map(f => (
-                    <li key={f} className="flex items-start gap-2.5 text-sm text-gray-300">
-                      <span className={`mt-0.5 flex-shrink-0 h-4 w-4 rounded-full flex items-center justify-center text-[10px] font-bold ${plan.highlight ? 'bg-blue-500/20 text-blue-400' : 'bg-white/10 text-gray-400'}`}>✓</span>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <Link href="/signup"
-                  className={`mt-7 block text-center w-full rounded-xl py-3 text-sm font-semibold transition-all ${
-                    plan.highlight
-                      ? 'bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-600/20'
-                      : 'border border-white/15 bg-white/5 text-white hover:bg-white/10'
-                  }`}>
-                  Start free 14-day trial
-                </Link>
-              </div>
+            <motion.div
+              key={plan.name}
+              variants={fadeUp}
+              className="rounded-2xl p-7 flex flex-col transition-all duration-300 border bg-white/[0.02] border-white/[0.07] hover:border-white/[0.15] hover:bg-white/[0.04]"
+            >
+              <PlanCardContent plan={plan} price={price} billing={billing} highlighted={false} />
             </motion.div>
           )
         })}
@@ -243,214 +314,421 @@ function LandingPricing() {
   )
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
+function PlanCardContent({
+  plan,
+  price,
+  billing,
+  highlighted,
+}: {
+  plan: Plan
+  price: number
+  billing: 'monthly' | 'annual'
+  highlighted: boolean
+}) {
+  return (
+    <div className="flex flex-col flex-1">
+      <p className="text-sm font-semibold text-gray-400 uppercase tracking-widest">{plan.name}</p>
+      <div className="mt-3 flex items-baseline gap-1">
+        <span className="text-xs text-gray-500 self-end mb-1">USD</span>
+        <span className="text-4xl font-extrabold text-white">${price}</span>
+        <span className="text-gray-500 text-sm">/mo</span>
+      </div>
+      {billing === 'annual' && (
+        <p className="mt-1 text-xs text-green-400">
+          ${price * 12}/yr · save ${(plan.monthlyPrice - price) * 12}/yr
+        </p>
+      )}
+      <p className="mt-3 text-sm text-gray-500 leading-relaxed">{plan.description}</p>
+      <ul className="mt-5 space-y-2.5 flex-1">
+        {plan.features.map(f => (
+          <li key={f} className="flex items-start gap-2.5 text-sm text-gray-300">
+            <span
+              className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                highlighted
+                  ? 'bg-blue-500/20 text-blue-400'
+                  : 'bg-white/[0.08] text-gray-400'
+              }`}
+            >
+              ✓
+            </span>
+            {f}
+          </li>
+        ))}
+      </ul>
+      <div className="mt-7 space-y-1">
+        <Link
+          href="/signup"
+          className={`block text-center w-full rounded-xl py-3 text-sm font-semibold transition-all ${
+            highlighted
+              ? 'bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-600/20'
+              : 'border border-white/[0.15] bg-white/5 text-white hover:bg-white/10'
+          }`}
+        >
+          Start free 14-day trial
+        </Link>
+        <p className="text-center text-xs text-gray-600">No credit card required</p>
+      </div>
+    </div>
+  )
+}
+
+// ── Features data ─────────────────────────────────────────────────────────────
+
+const FEATURES = [
+  {
+    icon: '🤖',
+    title: "Aria's messages",
+    body: 'Every follow-up written by Aria — not templates. Each message considers the debtor, the amount, and the history.',
+  },
+  {
+    icon: '🔗',
+    title: 'Xero integration',
+    body: 'Syncs overdue invoices directly from your Xero account. Zero manual entry. Always up to date.',
+  },
+  {
+    icon: '📊',
+    title: 'Recovery dashboard',
+    body: 'Every invoice, chase status, and recovery stat visible at a glance. Full audit trail forever.',
+  },
+  {
+    icon: '⏱️',
+    title: 'Automated escalation',
+    body: 'Set your thresholds. Aria handles the rest — friendly to firm to urgent, automatically.',
+  },
+  {
+    icon: '📨',
+    title: 'Email + SMS chasing',
+    body: 'Aria contacts debtors on the channel they respond to. SMS kicks in automatically for harder cases.',
+  },
+  {
+    icon: '🛡️',
+    title: '14-day free trial',
+    body: 'Try Aria free for 14 days. No credit card required. Cancel anytime. No lock-in contracts.',
+  },
+]
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 export default function Home() {
   return (
-    <div className="min-h-screen bg-[#030712] text-white overflow-x-hidden">
+    <>
+      <style dangerouslySetInnerHTML={{ __html: GLOBAL_STYLES }} />
 
-      {/* Background gradient */}
-      <div className="pointer-events-none fixed inset-0 -z-10">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] rounded-full bg-blue-600/10 blur-[120px]" />
-        <div className="absolute top-32 right-0 w-[400px] h-[400px] rounded-full bg-violet-600/8 blur-[100px]" />
-        {/* Dot grid */}
-        <div className="absolute inset-0 opacity-[0.03]"
-          style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
-      </div>
+      <div className="min-h-screen bg-[#030712] text-white overflow-x-hidden">
 
-      {/* ── Nav ── */}
-      <nav className="sticky top-0 z-50 border-b border-white/5 bg-[#030712]/80 backdrop-blur-md">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <span className="text-xl font-bold">Pay<span className="text-blue-400">Pilot</span></span>
-          <div className="flex items-center gap-3">
-            <Link href="/login" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">
-              Log in
-            </Link>
-            <Link href="/signup"
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 transition-colors shadow-lg shadow-blue-600/20">
-              Get started free
-            </Link>
+        {/* Background layers */}
+        <div className="pointer-events-none fixed inset-0 -z-10">
+          <div
+            className="absolute rounded-full blur-[140px]"
+            style={{
+              width: 900,
+              height: 600,
+              top: '25%',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              background: 'rgba(59,130,246,0.08)',
+            }}
+          />
+          <div
+            className="absolute rounded-full blur-[120px]"
+            style={{
+              width: 500,
+              height: 400,
+              top: '33%',
+              right: 0,
+              background: 'rgba(124,58,237,0.06)',
+            }}
+          />
+          <div
+            className="absolute inset-0 opacity-[0.03]"
+            style={{
+              backgroundImage:
+                'radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)',
+              backgroundSize: '32px 32px',
+            }}
+          />
+        </div>
+
+        {/* ── Nav ── */}
+        <nav className="sticky top-0 z-50 border-b border-white/5 bg-[#030712]/80 backdrop-blur-md">
+          <div className="max-w-6xl mx-auto px-6 flex items-center justify-between" style={{ height: 64 }}>
+            <span className="text-xl font-bold">
+              Pay<span className="text-blue-400">Pilot</span>
+            </span>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/login"
+                className="text-sm font-medium text-gray-400 hover:text-white transition-colors"
+              >
+                Log in
+              </Link>
+              <Link
+                href="/signup"
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 hover:shadow-blue-500/30"
+              >
+                Get started free
+              </Link>
+            </div>
           </div>
-        </div>
-      </nav>
+        </nav>
 
-      {/* ── Hero ── */}
-      <section className="max-w-6xl mx-auto px-6 pt-20 pb-8 text-center">
-        <motion.div variants={stagger} initial="hidden" animate="visible" className="space-y-6">
-          <motion.div variants={fadeUp}>
-            <span className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-1.5 text-sm font-medium text-blue-300">
-              ✦ AI-powered invoice recovery
-            </span>
-          </motion.div>
+        {/* ── Hero ── */}
+        <section className="max-w-6xl mx-auto px-6 pt-20 pb-12 min-h-[80vh] flex items-center">
+          <div className="w-full grid lg:grid-cols-5 gap-12 lg:gap-16 items-center">
 
-          <motion.h1 variants={fadeUp}
-            className="text-5xl sm:text-7xl font-extrabold leading-tight tracking-tight">
-            Your invoices.{' '}
-            <span className="bg-gradient-to-r from-blue-400 via-violet-400 to-blue-400 bg-clip-text text-transparent">
-              Chased. Paid.
-            </span>
-            <br />
-            Automatically.
-          </motion.h1>
+            {/* Left col — 60% */}
+            <div className="lg:col-span-3">
+              <motion.div
+                variants={stagger}
+                initial="hidden"
+                animate="visible"
+                className="space-y-7"
+              >
+                {/* Badge */}
+                <motion.div variants={fadeUp}>
+                  <span className="inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-4 py-1.5 text-xs font-medium text-blue-300">
+                    ✦ AI-powered invoice recovery
+                  </span>
+                </motion.div>
 
-          <motion.p variants={fadeUp} className="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
-            Meet Aria — your AI invoice recovery agent. She sends personalised, professional
-            follow-ups to every overdue client while you focus on running your business.
-            Start your <strong className="text-gray-300">14-day free trial</strong> today, no credit card required.
-          </motion.p>
+                {/* Headline */}
+                <motion.h1
+                  variants={fadeUp}
+                  className="text-6xl sm:text-8xl font-extrabold leading-none tracking-tight"
+                >
+                  <span className="text-white">Your invoices.</span>
+                  <br />
+                  <span
+                    className="bg-gradient-to-r from-blue-400 via-violet-400 to-blue-400 bg-clip-text text-transparent animate-gradient-text"
+                  >
+                    Chased. Paid.
+                  </span>
+                  <br />
+                  <span className="text-white">Automatically.</span>
+                </motion.h1>
 
-          <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center pt-2">
-            <Link href="/signup"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-8 py-4 text-base font-semibold text-white hover:bg-blue-500 transition-all shadow-2xl shadow-blue-600/30 hover:shadow-blue-500/40 hover:-translate-y-0.5 active:translate-y-0">
-              Start recovering invoices →
-            </Link>
-            <Link href="/demo"
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-8 py-4 text-base font-semibold text-gray-300 hover:bg-white/10 hover:text-white transition-all">
-              See it in action
-            </Link>
-          </motion.div>
+                {/* Subheading */}
+                <motion.p
+                  variants={fadeUp}
+                  className="text-xl text-gray-400 max-w-lg leading-relaxed"
+                >
+                  Aria is your AI invoice recovery agent. She chases overdue clients with
+                  personalised emails and SMS — escalating automatically until they pay. You
+                  focus on your business. Aria handles the rest.
+                </motion.p>
 
-          <motion.p variants={fadeUp} className="text-sm text-gray-600">
-            14-day free trial · No credit card required · Cancel anytime
-          </motion.p>
-        </motion.div>
+                {/* CTA buttons */}
+                <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4">
+                  <Link
+                    href="/signup"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-8 py-4 text-lg font-semibold text-white hover:bg-blue-500 transition-all shadow-xl shadow-blue-600/25 hover:shadow-blue-500/40 hover:-translate-y-0.5 active:translate-y-0"
+                    style={{ willChange: 'transform' }}
+                  >
+                    Start recovering invoices →
+                  </Link>
+                  <Link
+                    href="/demo"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-8 py-4 text-lg font-semibold text-gray-300 hover:bg-white/10 hover:text-white transition-all"
+                  >
+                    See it in action
+                  </Link>
+                </motion.div>
 
-        {/* Dashboard mockup */}
-        <div className="mt-16">
-          <DashboardMockup />
-        </div>
-      </section>
-
-      {/* ── Stats bar ── */}
-      <Section className="border-y border-white/5 bg-white/[0.02] py-12 mt-16">
-        <div className="max-w-6xl mx-auto px-6 grid grid-cols-2 sm:grid-cols-4 gap-8 text-center">
-          {[
-            { value: '3.2×', label: 'faster invoice recovery' },
-            { value: '94%', label: 'of clients pay within 2 contacts' },
-            { value: '4 hrs', label: 'saved per week on average' },
-            { value: '$18k', label: 'average recovered in first month' },
-          ].map(stat => (
-            <motion.div key={stat.label} variants={fadeUp}>
-              <p className="text-3xl font-extrabold bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">
-                {stat.value}
-              </p>
-              <p className="mt-1 text-sm text-gray-500">{stat.label}</p>
-            </motion.div>
-          ))}
-        </div>
-      </Section>
-
-      {/* ── How it works ── */}
-      <Section className="max-w-6xl mx-auto px-6 py-24">
-        <motion.div variants={fadeUp} className="text-center mb-14">
-          <p className="text-sm font-semibold text-blue-400 uppercase tracking-widest mb-3">How it works</p>
-          <h2 className="text-4xl font-bold text-white">Three steps to getting paid</h2>
-        </motion.div>
-
-        <div className="grid sm:grid-cols-3 gap-6 relative">
-          {/* Connector line */}
-          <div className="hidden sm:block absolute top-10 left-[20%] right-[20%] h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
-
-          {[
-            {
-              step: '01', icon: '📂',
-              title: 'Import your invoices',
-              body: 'Upload a CSV or connect your Xero account. PayPilot pulls all overdue invoices automatically.',
-            },
-            {
-              step: '02', icon: '🤖',
-              title: 'Aria writes your follow-ups',
-              body: 'Aria crafts personalised, professional messages — adapting tone from friendly to urgent based on how overdue each invoice is.',
-            },
-            {
-              step: '03', icon: '💸',
-              title: 'Get paid. Automatically.',
-              body: 'PayPilot tracks every contact, logs replies, and escalates when needed — all without you lifting a finger.',
-            },
-          ].map(item => (
-            <motion.div key={item.step} variants={fadeUp}
-              className="relative rounded-2xl border border-white/8 bg-white/[0.03] p-7 hover:bg-white/[0.06] hover:border-white/15 transition-all duration-300 group">
-              <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                style={{ background: 'radial-gradient(circle at 50% 0%, rgba(59,130,246,0.08), transparent 60%)' }} />
-              <div className="text-4xl mb-4">{item.icon}</div>
-              <p className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-2">Step {item.step}</p>
-              <h3 className="text-lg font-semibold text-white mb-2">{item.title}</h3>
-              <p className="text-sm text-gray-500 leading-relaxed">{item.body}</p>
-            </motion.div>
-          ))}
-        </div>
-      </Section>
-
-      {/* ── Features ── */}
-      <Section className="border-y border-white/5 bg-white/[0.01] py-24">
-        <div className="max-w-6xl mx-auto px-6">
-          <motion.div variants={fadeUp} className="text-center mb-14">
-            <p className="text-sm font-semibold text-blue-400 uppercase tracking-widest mb-3">Features</p>
-            <h2 className="text-4xl font-bold text-white">Everything you need to get paid</h2>
-          </motion.div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[
-              { icon: '🤖', title: "Aria's messages", body: 'Personalised email and SMS written by Aria — not templates. Each message feels genuinely human.' },
-              { icon: '🔗', title: 'Xero integration', body: 'Syncs overdue invoices directly from your Xero account in real time. Zero manual entry.' },
-              { icon: '📊', title: 'Recovery dashboard', body: 'Every outstanding invoice, chase history, and recovery rate visible at a glance.' },
-              { icon: '⏱️', title: 'Automated follow-ups', body: 'Set-and-forget escalation — PayPilot contacts clients on a smart schedule based on your thresholds.' },
-              { icon: '📨', title: 'Email + SMS chasing', body: 'Reaches clients on the channel they respond to. SMS kicks in automatically for harder cases.' },
-              { icon: '📋', title: 'Full audit trail', body: 'Every message sent, every reply received — all logged forever for your records.' },
-            ].map(f => (
-              <motion.div key={f.title} variants={fadeUp}
-                className="group flex gap-4 rounded-2xl border border-white/8 bg-white/[0.03] p-6 hover:bg-white/[0.06] hover:border-blue-500/20 transition-all duration-300 cursor-default">
-                <span className="text-2xl mt-0.5 flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
-                  {f.icon}
-                </span>
-                <div>
-                  <p className="font-semibold text-white text-sm mb-1">{f.title}</p>
-                  <p className="text-sm text-gray-500 leading-relaxed">{f.body}</p>
-                </div>
+                {/* Trust line */}
+                <motion.p variants={fadeUp} className="text-sm text-gray-600">
+                  14-day free trial · No credit card required · Cancel anytime
+                </motion.p>
               </motion.div>
+            </div>
+
+            {/* Right col — 40%: Invoice Stack */}
+            <div className="lg:col-span-2 flex justify-center">
+              {/* Desktop: full 3D, centre-aligned */}
+              <div className="hidden lg:flex justify-center">
+                <InvoiceStack />
+              </div>
+              {/* Mobile: scaled, centred below text */}
+              <div className="lg:hidden flex justify-center" style={{ transform: 'scale(0.75)', transformOrigin: 'center top' }}>
+                <InvoiceStack />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Stats bar ── */}
+        <section className="border-y border-white/[0.04] bg-white/[0.015] py-10">
+          <div className="max-w-6xl mx-auto px-6 grid grid-cols-2 lg:grid-cols-4 gap-8">
+            {STATS.map(s => (
+              <CountUpStat key={s.label} stat={s} />
             ))}
           </div>
-        </div>
-      </Section>
+        </section>
 
-      {/* ── Pricing ── */}
-      <LandingPricing />
-
-      {/* ── CTA ── */}
-      <section className="relative overflow-hidden py-24">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 via-violet-600/15 to-blue-600/20" />
-        <div className="absolute inset-0"
-          style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
-        <div className="relative max-w-3xl mx-auto px-6 text-center">
-          <Section>
-            <motion.h2 variants={fadeUp} className="text-4xl sm:text-5xl font-extrabold text-white leading-tight">
-              Ready to stop leaving<br />money on the table?
-            </motion.h2>
-            <motion.p variants={fadeUp} className="mt-4 text-lg text-gray-400">
-              Join thousands of businesses using PayPilot to recover invoices on autopilot.
-            </motion.p>
-            <motion.div variants={fadeUp} className="mt-8">
-              <Link href="/signup"
-                className="inline-flex items-center gap-2 rounded-xl bg-white px-10 py-4 text-base font-semibold text-gray-900 hover:bg-gray-100 transition-all shadow-2xl hover:-translate-y-0.5 active:translate-y-0">
-                Start your free trial →
-              </Link>
-            </motion.div>
-          </Section>
-        </div>
-      </section>
-
-      {/* ── Footer ── */}
-      <footer className="border-t border-white/5 py-8 px-6">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-600">
-          <span>Pay<span className="text-blue-400">Pilot</span> © 2026.</span>
-          <div className="flex flex-wrap justify-center gap-5">
-            <Link href="/demo"    className="hover:text-gray-400 transition-colors">Demo</Link>
-            <Link href="/login"   className="hover:text-gray-400 transition-colors">Log in</Link>
-            <Link href="/signup"  className="hover:text-gray-400 transition-colors">Sign up</Link>
-            <Link href="/privacy" className="hover:text-gray-400 transition-colors">Privacy</Link>
-            <Link href="/terms"   className="hover:text-gray-400 transition-colors">Terms</Link>
+        {/* ── How it works / Chase Timeline ── */}
+        <section className="max-w-6xl mx-auto px-6 py-24">
+          <div className="text-center mb-16">
+            <p className="text-sm font-semibold text-blue-400 uppercase tracking-widest mb-3">
+              How it works
+            </p>
+            <h2 className="text-4xl font-bold text-white">How Aria recovers your money</h2>
+            <p className="mt-3 text-gray-500 max-w-xl mx-auto">
+              A fully automated sequence from first reminder to final escalation.
+            </p>
           </div>
+          <ChaseTimeline />
+        </section>
+
+        {/* ── Features grid ── */}
+        <section className="border-y border-white/[0.04] bg-white/[0.01] py-24">
+          <div className="max-w-6xl mx-auto px-6">
+            <Section>
+              <motion.div variants={fadeUp} className="text-center mb-14">
+                <p className="text-sm font-semibold text-blue-400 uppercase tracking-widest mb-3">
+                  Features
+                </p>
+                <h2 className="text-4xl font-bold text-white">Everything you need to get paid</h2>
+              </motion.div>
+
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {FEATURES.map(f => (
+                  <motion.div
+                    key={f.title}
+                    variants={fadeUp}
+                    className="group relative flex gap-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 hover:bg-white/[0.05] hover:border-white/[0.12] hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300 cursor-default overflow-hidden"
+                  >
+                    {/* Radial hover glow */}
+                    <div
+                      className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                      style={{
+                        background:
+                          'radial-gradient(circle at 50% 0%, rgba(59,130,246,0.06), transparent)',
+                      }}
+                      aria-hidden
+                    />
+                    <span className="text-2xl mt-0.5 flex-shrink-0 group-hover:scale-110 transition-transform duration-300 relative z-10">
+                      {f.icon}
+                    </span>
+                    <div className="relative z-10">
+                      <p className="font-semibold text-white text-sm mb-1">{f.title}</p>
+                      <p className="text-sm text-gray-500 leading-relaxed">{f.body}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </Section>
+          </div>
+        </section>
+
+        {/* ── Aria typing demo ── */}
+        <section className="relative overflow-hidden py-24">
+          {/* Subtle radial bg */}
+          <div
+            className="pointer-events-none absolute inset-0 -z-10"
+            style={{
+              background:
+                'radial-gradient(ellipse at 50% 0%, rgba(124,58,237,0.05), transparent 60%)',
+            }}
+            aria-hidden
+          />
+
+          <div className="max-w-6xl mx-auto px-6">
+            <div className="text-center mb-16">
+              <div className="inline-flex items-center gap-2 rounded-full border border-purple-500/20 bg-purple-500/10 px-4 py-1.5 text-xs font-medium text-purple-400 mb-6">
+                ✦ Powered by Aria
+              </div>
+              <h2 className="text-4xl font-bold text-white">
+                See Aria write a follow-up in real time
+              </h2>
+              <p className="mt-3 text-lg text-gray-400 max-w-2xl mx-auto">
+                Every message is crafted personally for each debtor. No templates. No
+                copy-paste. Ever.
+              </p>
+            </div>
+
+            <AriaTyping />
+          </div>
+        </section>
+
+        {/* ── Pricing ── */}
+        <div
+          style={{
+            background:
+              'radial-gradient(ellipse at 50% 0%, rgba(59,130,246,0.04), transparent 60%)',
+          }}
+        >
+          <LandingPricing />
         </div>
-      </footer>
-    </div>
+
+        {/* ── Bottom CTA ── */}
+        <section className="relative overflow-hidden py-24">
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                'linear-gradient(to right, rgba(59,130,246,0.15), rgba(124,58,237,0.10), rgba(59,130,246,0.15))',
+            }}
+            aria-hidden
+          />
+          <div
+            className="absolute inset-0 opacity-[0.025]"
+            style={{
+              backgroundImage:
+                'radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px)',
+              backgroundSize: '24px 24px',
+            }}
+            aria-hidden
+          />
+          <div className="relative max-w-3xl mx-auto px-6 text-center">
+            <Section>
+              <motion.h2
+                variants={fadeUp}
+                className="text-5xl font-extrabold text-white leading-tight"
+              >
+                Ready to stop leaving<br />money on the table?
+              </motion.h2>
+              <motion.p variants={fadeUp} className="mt-4 text-xl text-gray-400 max-w-xl mx-auto">
+                Join thousands of businesses using Aria to recover invoices on autopilot.
+                Start your free trial today.
+              </motion.p>
+              <motion.div variants={fadeUp} className="mt-8">
+                <Link
+                  href="/signup"
+                  className="inline-flex items-center gap-2 rounded-xl bg-white px-10 py-4 text-lg font-bold text-gray-900 hover:bg-gray-100 transition-all shadow-2xl hover:-translate-y-1 hover:shadow-white/10 duration-200"
+                  style={{ willChange: 'transform' }}
+                >
+                  Start your free trial →
+                </Link>
+              </motion.div>
+            </Section>
+          </div>
+        </section>
+
+        {/* ── Footer ── */}
+        <footer className="border-t border-white/[0.05] py-8 px-6">
+          <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-600">
+            <span>
+              Pay<span className="text-blue-400">Pilot</span> © 2026.
+            </span>
+            <div className="flex flex-wrap justify-center gap-5">
+              {[
+                ['Demo', '/demo'],
+                ['Log in', '/login'],
+                ['Sign up', '/signup'],
+                ['Privacy', '/privacy'],
+                ['Terms', '/terms'],
+              ].map(([label, href]) => (
+                <Link
+                  key={label}
+                  href={href}
+                  className="hover:text-gray-400 transition-colors"
+                >
+                  {label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </footer>
+      </div>
+    </>
   )
 }

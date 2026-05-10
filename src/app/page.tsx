@@ -110,7 +110,7 @@ function DashboardMockup() {
           {/* Chase now badge */}
           <div className="flex justify-end">
             <span className="rounded-lg bg-blue-600/20 border border-blue-500/30 px-3 py-1 text-[10px] text-blue-400 font-medium">
-              AI chasing 3 invoices now...
+              Aria chasing 3 invoices now...
             </span>
           </div>
         </div>
@@ -210,6 +210,7 @@ function LandingPricing() {
               <div className="relative flex flex-col flex-1">
                 <p className="text-sm font-semibold text-gray-400 uppercase tracking-widest">{plan.name}</p>
                 <div className="mt-3 flex items-baseline gap-1">
+                  <span className="text-xs text-gray-500 mb-1">USD</span>
                   <span className="text-4xl font-extrabold text-white">${price}</span>
                   <span className="text-gray-500 text-sm">/mo</span>
                 </div>
@@ -277,22 +278,24 @@ export default function Home() {
         <motion.div variants={stagger} initial="hidden" animate="visible" className="space-y-6">
           <motion.div variants={fadeUp}>
             <span className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-1.5 text-sm font-medium text-blue-300">
-              🇳🇿 Built for New Zealand small businesses
+              ✦ AI-powered invoice recovery
             </span>
           </motion.div>
 
           <motion.h1 variants={fadeUp}
             className="text-5xl sm:text-7xl font-extrabold leading-tight tracking-tight">
-            Stop chasing invoices.
-            <br />
+            Your invoices.{' '}
             <span className="bg-gradient-to-r from-blue-400 via-violet-400 to-blue-400 bg-clip-text text-transparent">
-              Let AI do it for you.
+              Chased. Paid.
             </span>
+            <br />
+            Automatically.
           </motion.h1>
 
           <motion.p variants={fadeUp} className="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
-            PayPilot automatically sends personalised, professional follow-ups to overdue clients —
-            so you get paid faster without the awkward conversations.
+            Meet Aria — your AI invoice recovery agent. She sends personalised, professional
+            follow-ups to every overdue client while you focus on running your business.
+            Start your <strong className="text-gray-300">14-day free trial</strong> today, no credit card required.
           </motion.p>
 
           <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center pt-2">
@@ -355,8 +358,8 @@ export default function Home() {
             },
             {
               step: '02', icon: '🤖',
-              title: 'Claude AI writes follow-ups',
-              body: 'Claude crafts personalised, professional messages — adapting tone from friendly to urgent based on how overdue the invoice is.',
+              title: 'Aria writes your follow-ups',
+              body: 'Aria crafts personalised, professional messages — adapting tone from friendly to urgent based on how overdue each invoice is.',
             },
             {
               step: '03', icon: '💸',
@@ -387,7 +390,7 @@ export default function Home() {
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
-              { icon: '🤖', title: 'Claude AI messages', body: 'Personalised email and SMS powered by Claude — not templates. Each message feels genuinely human.' },
+              { icon: '🤖', title: "Aria's messages", body: 'Personalised email and SMS written by Aria — not templates. Each message feels genuinely human.' },
               { icon: '🔗', title: 'Xero integration', body: 'Syncs overdue invoices directly from your Xero account in real time. Zero manual entry.' },
               { icon: '📊', title: 'Recovery dashboard', body: 'Every outstanding invoice, chase history, and recovery rate visible at a glance.' },
               { icon: '⏱️', title: 'Automated follow-ups', body: 'Set-and-forget escalation — PayPilot contacts clients on a smart schedule based on your thresholds.' },
@@ -423,7 +426,7 @@ export default function Home() {
               Ready to stop leaving<br />money on the table?
             </motion.h2>
             <motion.p variants={fadeUp} className="mt-4 text-lg text-gray-400">
-              Join NZ small businesses using PayPilot to recover invoices on autopilot.
+              Join thousands of businesses using PayPilot to recover invoices on autopilot.
             </motion.p>
             <motion.div variants={fadeUp} className="mt-8">
               <Link href="/signup"

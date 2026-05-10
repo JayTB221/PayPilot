@@ -473,7 +473,7 @@ export default function Home() {
         </nav>
 
         {/* ── Hero ── */}
-        <section className="max-w-6xl mx-auto px-6 pt-20 pb-12 min-h-[80vh] flex items-center">
+        <section className="max-w-6xl mx-auto px-6 pt-20 pb-12 min-h-screen flex items-center">
           <div className="w-full grid lg:grid-cols-5 gap-12 lg:gap-16 items-center">
 
             {/* Left col — 60% */}

@@ -127,8 +127,14 @@ function ContentCard({ node, visible }: { node: TimelineNode; visible: boolean }
   const prefersReduced = useReducedMotion()
   return (
     <motion.div
-      initial={prefersReduced ? false : { opacity: 0, x: node.side === 'left' ? -40 : 40 }}
-      animate={visible ? { opacity: 1, x: 0 } : {}}
+      initial={prefersReduced ? false : { opacity: 0, x: node.side === 'left' ? -50 : 50 }}
+      animate={
+        prefersReduced
+          ? {}
+          : visible
+          ? { opacity: 1, x: 0 }
+          : { opacity: 0, x: node.side === 'left' ? -50 : 50 }
+      }
       transition={{ type: 'spring', stiffness: 100, damping: 15 }}
       style={{ willChange: 'transform, opacity' }}
       className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 backdrop-blur-sm max-w-[260px] w-full"
@@ -152,7 +158,13 @@ function CircleNode({ node, visible }: { node: TimelineNode; visible: boolean })
   return (
     <motion.div
       initial={prefersReduced ? false : { opacity: 0, scale: 0.5 }}
-      animate={visible ? { opacity: 1, scale: 1 } : {}}
+      animate={
+        prefersReduced
+          ? {}
+          : visible
+          ? { opacity: 1, scale: 1 }
+          : { opacity: 0, scale: 0.5 }
+      }
       transition={{ type: 'spring', stiffness: 120, damping: 14, delay: 0.1 }}
       className="flex flex-col items-center gap-2"
       style={{ willChange: 'transform, opacity' }}
@@ -240,6 +252,7 @@ export function ChaseTimeline() {
             style={{
               background: 'linear-gradient(to bottom, #3b82f6, #7c3aed, #ef4444)',
               willChange: 'transform',
+              transformOrigin: 'top',
             }}
             initial={{ scaleY: 0 }}
             animate={{ scaleY: inView && !prefersReduced ? 1 : prefersReduced ? 1 : 0 }}
@@ -287,6 +300,7 @@ export function ChaseTimeline() {
             style={{
               background: 'linear-gradient(to bottom, #3b82f6, #7c3aed, #ef4444)',
               willChange: 'transform',
+              transformOrigin: 'top',
             }}
             initial={{ scaleY: 0 }}
             animate={{ scaleY: inView && !prefersReduced ? 1 : prefersReduced ? 1 : 0 }}

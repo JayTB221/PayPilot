@@ -1,6 +1,6 @@
 'use client'
 
-import { motion, useInView, useReducedMotion, type Variants } from 'framer-motion'
+import { motion, AnimatePresence, useInView, useReducedMotion, type Variants } from 'framer-motion'
 import { useRef, useState, useEffect } from 'react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
@@ -12,7 +12,7 @@ const InvoiceStack = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="w-[320px] h-[420px] rounded-2xl bg-white/[0.03] border border-white/[0.08] animate-pulse" />
+      <div className="w-[350px] h-[420px] rounded-2xl bg-white/[0.03] border border-white/[0.08] animate-pulse" />
     ),
   }
 )
@@ -29,32 +29,16 @@ const AriaTyping = dynamic(
   () => import('@/components/landing/AriaTyping').then(m => m.AriaTyping),
   {
     ssr: false,
-    loading: () => <div className="h-[380px] rounded-2xl bg-white/[0.02] animate-pulse max-w-2xl mx-auto w-full" />,
+    loading: () => (
+      <div className="h-[380px] rounded-2xl bg-white/[0.02] animate-pulse max-w-2xl mx-auto w-full" />
+    ),
   }
 )
 
-// ── Global keyframes (injected once) ─────────────────────────────────────────
-
-const GLOBAL_STYLES = `
-  @keyframes gradientShift {
-    0%   { background-position: 0%   50%; }
-    50%  { background-position: 100% 50%; }
-    100% { background-position: 0%   50%; }
-  }
-  .animate-gradient-text {
-    background-size: 200% 200%;
-    animation: gradientShift 3s ease infinite;
-  }
-  @keyframes gradientBorder {
-    0%   { background-position: 0%   50%; }
-    50%  { background-position: 100% 50%; }
-    100% { background-position: 0%   50%; }
-  }
-  .animate-gradient-border {
-    background-size: 200% 200%;
-    animation: gradientBorder 4s linear infinite;
-  }
-`
+const Particles = dynamic(
+  () => import('@/components/landing/Particles').then(m => m.Particles),
+  { ssr: false }
+)
 
 // ── Animation variants ────────────────────────────────────────────────────────
 
@@ -66,6 +50,91 @@ const fadeUp: Variants = {
 const stagger: Variants = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.1 } },
+}
+
+// ── Scroll progress bar ───────────────────────────────────────────────────────
+
+function ScrollProgressBar() {
+  const [progress, setProgress] = useState(0)
+
+  useEffect(() => {
+    const update = () => {
+      const scrolled = window.scrollY
+      const total = document.documentElement.scrollHeight - window.innerHeight
+      setProgress(total > 0 ? scrolled / total : 0)
+    }
+    window.addEventListener('scroll', update, { passive: true })
+    return () => window.removeEventListener('scroll', update)
+  }, [])
+
+  return (
+    <div
+      aria-hidden
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        zIndex: 100,
+        height: 2,
+        width: `${progress * 100}%`,
+        background: 'linear-gradient(to right, #3b82f6, #7c3aed)',
+        borderRadius: '0 9999px 9999px 0',
+        pointerEvents: 'none',
+      }}
+    />
+  )
+}
+
+// ── Live money counter ────────────────────────────────────────────────────────
+
+function LiveMoneyCounter() {
+  const [amount, setAmount] = useState(2847230)
+  const prefersReduced = useReducedMotion()
+
+  useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout>
+
+    const schedule = () => {
+      const delay = 3000 + Math.random() * 2000
+      timeoutId = setTimeout(() => {
+        setAmount(prev => prev + Math.floor(50 + Math.random() * 250))
+        schedule()
+      }, delay)
+    }
+
+    schedule()
+    return () => clearTimeout(timeoutId)
+  }, [])
+
+  const formatted = '$' + amount.toLocaleString('en-US')
+
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      <span
+        className="w-2 h-2 rounded-full bg-green-500 animate-pulse flex-shrink-0"
+        aria-hidden
+      />
+      <span className="text-sm text-gray-500">Aria has recovered</span>
+      <span
+        className="overflow-hidden inline-flex items-center"
+        style={{ height: '1.25rem' }}
+      >
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.span
+            key={amount}
+            initial={prefersReduced ? false : { y: '100%', opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={prefersReduced ? undefined : { y: '-100%', opacity: 0 }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            className="text-sm font-bold text-green-400 block"
+          >
+            {formatted}
+          </motion.span>
+        </AnimatePresence>
+      </span>
+      <span className="text-sm text-gray-500">for businesses this month</span>
+    </div>
+  )
 }
 
 // ── Scroll-triggered section wrapper ─────────────────────────────────────────
@@ -103,10 +172,10 @@ interface StatItem {
 }
 
 const STATS: StatItem[] = [
-  { prefix: '', value: 3.2, suffix: '×', label: 'faster invoice recovery', decimals: 1 },
-  { prefix: '', value: 94,  suffix: '%', label: 'of clients pay within 2 contacts' },
-  { prefix: '', value: 4,   suffix: ' hrs', label: 'saved per week on average' },
-  { prefix: '$', value: 18, suffix: 'k', label: 'average recovered in first month' },
+  { prefix: '', value: 3.2, suffix: '×',    label: 'faster invoice recovery',         decimals: 1 },
+  { prefix: '', value: 94,  suffix: '%',    label: 'of clients pay within 2 contacts'               },
+  { prefix: '', value: 4,   suffix: ' hrs', label: 'saved per week on average'                      },
+  { prefix: '$', value: 18, suffix: 'k',   label: 'average recovered in first month'               },
 ]
 
 function CountUpStat({ stat }: { stat: StatItem }) {
@@ -126,7 +195,6 @@ function CountUpStat({ stat }: { stat: StatItem }) {
     const raf = (now: number) => {
       const elapsed = now - start
       const progress = Math.min(elapsed / duration, 1)
-      // easeOut
       const eased = 1 - Math.pow(1 - progress, 3)
       setDisplayed(eased * stat.value)
       if (progress < 1) requestAnimationFrame(raf)
@@ -266,14 +334,12 @@ function LandingPricing() {
                 <div
                   className="absolute inset-0 rounded-2xl animate-gradient-border"
                   style={{
-                    background:
-                      'linear-gradient(135deg, #3b82f6, #7c3aed, #3b82f6)',
+                    background: 'linear-gradient(135deg, #3b82f6, #7c3aed, #3b82f6)',
                     padding: 1,
                     zIndex: 0,
                   }}
                   aria-hidden
                 />
-                {/* Card */}
                 <div
                   className="relative rounded-2xl p-7 flex flex-col h-full"
                   style={{
@@ -282,8 +348,7 @@ function LandingPricing() {
                     zIndex: 1,
                     margin: 1,
                     borderRadius: 15,
-                    boxShadow:
-                      '0 0 0 1px rgba(59,130,246,0.1), 0 25px 50px rgba(59,130,246,0.1)',
+                    boxShadow: '0 0 0 1px rgba(59,130,246,0.1), 0 25px 50px rgba(59,130,246,0.1)',
                   }}
                 >
                   {plan.badge && (
@@ -410,21 +475,26 @@ const FEATURES = [
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function Home() {
+  const prefersReduced = useReducedMotion()
+
   return (
     <>
-      <style dangerouslySetInnerHTML={{ __html: GLOBAL_STYLES }} />
+      {/* Particles canvas — fixed, z-index 0, behind all content */}
+      <Particles />
 
-      <div className="min-h-screen bg-[#030712] text-white overflow-x-hidden">
+      {/* Scroll progress bar */}
+      <ScrollProgressBar />
+
+      {/* All page content sits above the canvas (position relative + z-index 1) */}
+      <div className="relative min-h-screen bg-[#030712] text-white overflow-x-hidden" style={{ zIndex: 1 }}>
 
         {/* Background layers */}
-        <div className="pointer-events-none fixed inset-0 -z-10">
+        <div className="pointer-events-none fixed inset-0 -z-10" aria-hidden>
           <div
             className="absolute rounded-full blur-[140px]"
             style={{
-              width: 900,
-              height: 600,
-              top: '25%',
-              left: '50%',
+              width: 900, height: 600,
+              top: '25%', left: '50%',
               transform: 'translateX(-50%)',
               background: 'rgba(59,130,246,0.08)',
             }}
@@ -432,18 +502,15 @@ export default function Home() {
           <div
             className="absolute rounded-full blur-[120px]"
             style={{
-              width: 500,
-              height: 400,
-              top: '33%',
-              right: 0,
+              width: 500, height: 400,
+              top: '33%', right: 0,
               background: 'rgba(124,58,237,0.06)',
             }}
           />
           <div
             className="absolute inset-0 opacity-[0.03]"
             style={{
-              backgroundImage:
-                'radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)',
+              backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)',
               backgroundSize: '32px 32px',
             }}
           />
@@ -498,9 +565,8 @@ export default function Home() {
                 >
                   <span className="text-white">Your invoices.</span>
                   <br />
-                  <span
-                    className="bg-gradient-to-r from-blue-400 via-violet-400 to-blue-400 bg-clip-text text-transparent animate-gradient-text"
-                  >
+                  {/* Moving gradient text — uses gradient-hero-text class from globals.css */}
+                  <span className="gradient-hero-text">
                     Chased. Paid.
                   </span>
                   <br />
@@ -519,19 +585,33 @@ export default function Home() {
 
                 {/* CTA buttons */}
                 <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4">
-                  <Link
-                    href="/signup"
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-8 py-4 text-lg font-semibold text-white hover:bg-blue-500 transition-all shadow-xl shadow-blue-600/25 hover:shadow-blue-500/40 hover:-translate-y-0.5 active:translate-y-0"
-                    style={{ willChange: 'transform' }}
-                  >
-                    Start recovering invoices →
-                  </Link>
+                  {/* Primary button with expanding pulse rings */}
+                  <div className="relative inline-flex">
+                    {!prefersReduced && (
+                      <>
+                        <div className="pulse-ring" aria-hidden />
+                        <div className="pulse-ring pulse-ring-delayed" aria-hidden />
+                      </>
+                    )}
+                    <Link
+                      href="/signup"
+                      className="relative inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-8 py-4 text-lg font-semibold text-white hover:bg-blue-500 transition-all shadow-xl shadow-blue-600/25 hover:shadow-blue-500/40 hover:-translate-y-0.5 active:translate-y-0"
+                      style={{ willChange: 'transform' }}
+                    >
+                      Start recovering invoices →
+                    </Link>
+                  </div>
                   <Link
                     href="/demo"
                     className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-8 py-4 text-lg font-semibold text-gray-300 hover:bg-white/10 hover:text-white transition-all"
                   >
                     See it in action
                   </Link>
+                </motion.div>
+
+                {/* Live money counter */}
+                <motion.div variants={fadeUp}>
+                  <LiveMoneyCounter />
                 </motion.div>
 
                 {/* Trust line */}
@@ -543,11 +623,9 @@ export default function Home() {
 
             {/* Right col — 40%: Invoice Stack */}
             <div className="lg:col-span-2 flex justify-center">
-              {/* Desktop: full 3D, centre-aligned */}
               <div className="hidden lg:flex justify-center">
                 <InvoiceStack />
               </div>
-              {/* Mobile: scaled, centred below text */}
               <div className="lg:hidden flex justify-center" style={{ transform: 'scale(0.75)', transformOrigin: 'center top' }}>
                 <InvoiceStack />
               </div>
@@ -567,13 +645,15 @@ export default function Home() {
         {/* ── How it works / Chase Timeline ── */}
         <section className="max-w-6xl mx-auto px-6 py-24">
           <div className="text-center mb-16">
-            <p className="text-sm font-semibold text-blue-400 uppercase tracking-widest mb-3">
-              How it works
-            </p>
-            <h2 className="text-4xl font-bold text-white">How Aria recovers your money</h2>
-            <p className="mt-3 text-gray-500 max-w-xl mx-auto">
-              A fully automated sequence from first reminder to final escalation.
-            </p>
+            <RevealHeading>
+              <p className="text-sm font-semibold text-blue-400 uppercase tracking-widest mb-3">
+                How it works
+              </p>
+              <h2 className="text-4xl font-bold text-white">How Aria recovers your money</h2>
+              <p className="mt-3 text-gray-500 max-w-xl mx-auto">
+                A fully automated sequence from first reminder to final escalation.
+              </p>
+            </RevealHeading>
           </div>
           <ChaseTimeline />
         </section>
@@ -600,8 +680,7 @@ export default function Home() {
                     <div
                       className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                       style={{
-                        background:
-                          'radial-gradient(circle at 50% 0%, rgba(59,130,246,0.06), transparent)',
+                        background: 'radial-gradient(circle at 50% 0%, rgba(59,130,246,0.06), transparent)',
                       }}
                       aria-hidden
                     />
@@ -621,40 +700,33 @@ export default function Home() {
 
         {/* ── Aria typing demo ── */}
         <section className="relative overflow-hidden py-24">
-          {/* Subtle radial bg */}
           <div
             className="pointer-events-none absolute inset-0 -z-10"
-            style={{
-              background:
-                'radial-gradient(ellipse at 50% 0%, rgba(124,58,237,0.05), transparent 60%)',
-            }}
+            style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(124,58,237,0.05), transparent 60%)' }}
             aria-hidden
           />
-
           <div className="max-w-6xl mx-auto px-6">
             <div className="text-center mb-16">
-              <div className="inline-flex items-center gap-2 rounded-full border border-purple-500/20 bg-purple-500/10 px-4 py-1.5 text-xs font-medium text-purple-400 mb-6">
-                ✦ Powered by Aria
-              </div>
-              <h2 className="text-4xl font-bold text-white">
-                See Aria write a follow-up in real time
-              </h2>
-              <p className="mt-3 text-lg text-gray-400 max-w-2xl mx-auto">
-                Every message is crafted personally for each debtor. No templates. No
-                copy-paste. Ever.
-              </p>
+              <RevealHeading>
+                <div className="inline-flex items-center gap-2 rounded-full border border-purple-500/20 bg-purple-500/10 px-4 py-1.5 text-xs font-medium text-purple-400 mb-6">
+                  ✦ Powered by Aria
+                </div>
+                <h2 className="text-4xl font-bold text-white">
+                  See Aria write a follow-up in real time
+                </h2>
+                <p className="mt-3 text-lg text-gray-400 max-w-2xl mx-auto">
+                  Every message is crafted personally for each debtor. No templates. No
+                  copy-paste. Ever.
+                </p>
+              </RevealHeading>
             </div>
-
             <AriaTyping />
           </div>
         </section>
 
         {/* ── Pricing ── */}
         <div
-          style={{
-            background:
-              'radial-gradient(ellipse at 50% 0%, rgba(59,130,246,0.04), transparent 60%)',
-          }}
+          style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(59,130,246,0.04), transparent 60%)' }}
         >
           <LandingPricing />
         </div>
@@ -663,17 +735,13 @@ export default function Home() {
         <section className="relative overflow-hidden py-24">
           <div
             className="absolute inset-0"
-            style={{
-              background:
-                'linear-gradient(to right, rgba(59,130,246,0.15), rgba(124,58,237,0.10), rgba(59,130,246,0.15))',
-            }}
+            style={{ background: 'linear-gradient(to right, rgba(59,130,246,0.15), rgba(124,58,237,0.10), rgba(59,130,246,0.15))' }}
             aria-hidden
           />
           <div
             className="absolute inset-0 opacity-[0.025]"
             style={{
-              backgroundImage:
-                'radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px)',
+              backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px)',
               backgroundSize: '24px 24px',
             }}
             aria-hidden
@@ -730,5 +798,25 @@ export default function Home() {
         </footer>
       </div>
     </>
+  )
+}
+
+// ── Inline reveal wrapper for section headings ────────────────────────────────
+// Kept at the bottom to avoid hoisting issues; used above via JSX
+
+function RevealHeading({ children }: { children: React.ReactNode }) {
+  const ref = useRef(null)
+  const inView = useInView(ref, { once: true, margin: '-80px' })
+  const prefersReduced = useReducedMotion()
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={prefersReduced ? false : { opacity: 0, y: 20 }}
+      animate={inView ? { opacity: 1, y: 0 } : prefersReduced ? {} : { opacity: 0, y: 20 }}
+      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+    >
+      {children}
+    </motion.div>
   )
 }

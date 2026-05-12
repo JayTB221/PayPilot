@@ -1,10 +1,13 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Geist } from 'next/font/google'
 import { Suspense } from 'react'
 import { PostHogProvider } from '@/components/PostHogProvider'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'] })
+const geist = Geist({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700', '800', '900'],
+})
 
 export const metadata: Metadata = {
   title: 'PayPilot — AI-Powered Invoice Recovery',
@@ -21,7 +24,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className={geist.className}>
         <Suspense>
           <PostHogProvider>
             {children}

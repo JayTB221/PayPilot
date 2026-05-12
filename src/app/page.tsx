@@ -89,16 +89,16 @@ function ScrollProgressBar() {
 // ── Live money counter ────────────────────────────────────────────────────────
 
 function LiveMoneyCounter() {
-  const [amount, setAmount] = useState(2847230)
+  const [amount, setAmount] = useState(48340)
   const prefersReduced = useReducedMotion()
 
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout>
 
     const schedule = () => {
-      const delay = 3000 + Math.random() * 2000
+      const delay = 8000 + Math.random() * 7000
       timeoutId = setTimeout(() => {
-        setAmount(prev => prev + Math.floor(50 + Math.random() * 250))
+        setAmount(prev => prev + Math.floor(200 + Math.random() * 600))
         schedule()
       }, delay)
     }
@@ -115,7 +115,7 @@ function LiveMoneyCounter() {
         className="w-2 h-2 rounded-full bg-green-500 animate-pulse flex-shrink-0"
         aria-hidden
       />
-      <span className="text-sm text-gray-500">Aria has recovered</span>
+      <span className="text-sm text-gray-500">Aria recovered</span>
       <span
         className="overflow-hidden inline-flex items-center"
         style={{ height: '1.25rem' }}
@@ -133,7 +133,7 @@ function LiveMoneyCounter() {
           </motion.span>
         </AnimatePresence>
       </span>
-      <span className="text-sm text-gray-500">for businesses this month</span>
+      <span className="text-sm text-gray-500">in invoices today</span>
     </div>
   )
 }
@@ -487,7 +487,7 @@ export default function Home() {
       <ScrollProgressBar />
 
       {/* All page content sits above the canvas (position relative + z-index 1) */}
-      <div className="relative min-h-screen bg-[#030712] text-white overflow-x-hidden" style={{ zIndex: 1 }}>
+      <div className="relative min-h-screen bg-[#030712] text-white overflow-x-hidden" style={{ zIndex: 2 }}>
 
         {/* Background layers */}
         <div className="pointer-events-none fixed inset-0 -z-10" aria-hidden>
@@ -596,7 +596,7 @@ export default function Home() {
                     )}
                     <Link
                       href="/signup"
-                      className="relative inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-8 py-4 text-lg font-semibold text-white hover:bg-blue-500 transition-all shadow-xl shadow-blue-600/25 hover:shadow-blue-500/40 hover:-translate-y-0.5 active:translate-y-0"
+                      className="relative z-10 inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-8 py-4 text-lg font-semibold text-white hover:bg-blue-500 transition-all shadow-xl shadow-blue-600/25 hover:shadow-blue-500/40 hover:-translate-y-0.5 active:translate-y-0"
                       style={{ willChange: 'transform' }}
                     >
                       Start recovering invoices →

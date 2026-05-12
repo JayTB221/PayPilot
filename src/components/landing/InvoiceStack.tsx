@@ -21,14 +21,6 @@ const INVOICES: readonly Invoice[] = [
   { name: 'Coastal Events Co',   number: 'INV-4127', amount: '$5,600',  days: 14 },
 ]
 
-// Back card → front card. Rendered back-to-front so the front card DOM is last.
-const STACK = [
-  { top: 0,  left: 0,  zIndex: 4, opacity: 1.00 }, // index 0 — front
-  { top: 8,  left: 8,  zIndex: 3, opacity: 0.80 }, // index 1
-  { top: 16, left: 16, zIndex: 2, opacity: 0.65 }, // index 2
-  { top: 24, left: 24, zIndex: 1, opacity: 0.50 }, // index 3 — back
-] as const
-
 // ── Envelope icon ─────────────────────────────────────────────────────────────
 
 function EnvelopeIcon() {
@@ -119,8 +111,8 @@ export function InvoiceStack() {
   }, [prefersReduced])
 
   return (
-    // Fixed container — 300×420px gives room for 280px card + 24px back-card offsets
-    <div style={{ position: 'relative', width: 300, height: 420 }}>
+    // Container: 320×460px gives room for 280px card + 18px back-card offsets + float animation
+    <div style={{ position: 'relative', width: 320, height: 460, overflow: 'visible' }}>
 
       {/* Purple glow behind stack */}
       <div
@@ -139,26 +131,52 @@ export function InvoiceStack() {
         }}
       />
 
-      {/* ── Back cards (indices 3, 2, 1) — plain divs, no JS animation ── */}
-      {([3, 2, 1] as const).map(idx => {
-        const pos = STACK[idx]
-        return (
-          <div
-            key={INVOICES[idx].number}
-            style={{
-              position: 'absolute',
-              top: pos.top,
-              left: pos.left,
-              zIndex: pos.zIndex,
-              opacity: pos.opacity,
-            }}
-          >
-            <CardFace invoice={INVOICES[idx]} />
-          </div>
-        )
-      })}
+      {/* ── Card 4 (back) — renders first so it appears behind ── */}
+      <div
+        key={INVOICES[3].number}
+        style={{
+          position: 'absolute',
+          top: 18,
+          left: 18,
+          zIndex: 1,
+          opacity: 0.45,
+          width: 280,
+        }}
+      >
+        <CardFace invoice={INVOICES[3]} />
+      </div>
 
-      {/* ── Front card (index 0) — animated ── */}
+      {/* ── Card 3 ── */}
+      <div
+        key={INVOICES[2].number}
+        style={{
+          position: 'absolute',
+          top: 12,
+          left: 12,
+          zIndex: 2,
+          opacity: 0.62,
+          width: 280,
+        }}
+      >
+        <CardFace invoice={INVOICES[2]} />
+      </div>
+
+      {/* ── Card 2 ── */}
+      <div
+        key={INVOICES[1].number}
+        style={{
+          position: 'absolute',
+          top: 6,
+          left: 6,
+          zIndex: 3,
+          opacity: 0.78,
+          width: 280,
+        }}
+      >
+        <CardFace invoice={INVOICES[1]} />
+      </div>
+
+      {/* ── Front card (index 0) — animated, renders last so it's on top ── */}
       {/*
         Slide animation uses framer-motion `x`.
         CSS `top/left` positions the card in the stack (doesn't conflict with x).
@@ -197,9 +215,10 @@ export function InvoiceStack() {
         }
         style={{
           position: 'absolute',
-          top: STACK[0].top,
-          left: STACK[0].left,
-          zIndex: STACK[0].zIndex,
+          top: 0,
+          left: 0,
+          zIndex: 4,
+          width: 280,
         }}
       >
         {/* Float animation */}

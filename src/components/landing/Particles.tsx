@@ -36,15 +36,15 @@ export function Particles() {
     resize()
     window.addEventListener('resize', resize)
 
-    // 40 particles, more visible than before
-    particlesRef.current = Array.from({ length: 40 }, () => {
+    // 50 particles, brighter and more visible
+    particlesRef.current = Array.from({ length: 50 }, () => {
       const isBlue = Math.random() > 0.5
       return {
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
-        size: Math.random() * 1.5 + 1.5,      // 1.5–3px
+        size: Math.random() * 1.5 + 2,        // 2–3.5px
         speed: Math.random() * 0.3 + 0.1,
-        opacity: Math.random() * 0.3 + 0.2,   // 0.2–0.5
+        opacity: Math.random() * 0.3 + 0.3,   // 0.3–0.6
         r: isBlue ? 59 : 124,
         g: isBlue ? 130 : 58,
         b: isBlue ? 246 : 237,
@@ -84,8 +84,6 @@ export function Particles() {
         position: 'fixed',
         top: 0,
         left: 0,
-        width: '100vw',
-        height: '100vh',
         zIndex: 1,
         pointerEvents: 'none',
       }}

@@ -65,6 +65,7 @@
 
 /* Hero headline: 4-stop gradient with pink for visible colour shift */
 .gradient-hero-text {
+  display: inline-block;
   background: linear-gradient(
     135deg,
     #60a5fa,
@@ -76,6 +77,7 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  color: transparent;
   animation: gradientShift 3s ease infinite;
 }
 

@@ -3,7 +3,7 @@
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { useEffect, useRef, useState } from 'react'
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── Types & data ──────────────────────────────────────────────────────────────
 
 interface Invoice {
   readonly name: string
@@ -14,29 +14,26 @@ interface Invoice {
 
 type PaidPhase = 'overlay' | 'stamp' | 'slide' | 'reset' | 'fadein' | null
 
-// ── Data ──────────────────────────────────────────────────────────────────────
-
 const INVOICES: readonly Invoice[] = [
-  { name: 'Acme Electrical Co', number: 'INV-1042', amount: '$3,200',  days: 47 },
-  { name: 'Buildright Ltd',     number: 'INV-2891', amount: '$8,750',  days: 33 },
-  { name: 'Horizon Plumbing',   number: 'INV-3654', amount: '$12,400', days: 22 },
-  { name: 'Coastal Events Co',  number: 'INV-4127', amount: '$5,600',  days: 14 },
+  { name: 'Acme Electrical Co',  number: 'INV-1042', amount: '$3,200',  days: 47 },
+  { name: 'Buildright Ltd',      number: 'INV-2891', amount: '$8,750',  days: 33 },
+  { name: 'Horizon Plumbing',    number: 'INV-3654', amount: '$12,400', days: 22 },
+  { name: 'Coastal Events Co',   number: 'INV-4127', amount: '$5,600',  days: 14 },
 ]
 
-// 2D stack offsets — index 0 is the front card, rendered LAST in the DOM so it paints on top.
-// Each card behind is shifted right + down and slightly dimmed.
+// Back card → front card. Rendered back-to-front so the front card DOM is last.
 const STACK = [
-  { dx: 0,  dy: 0,  opacity: 1.00, zIndex: 40 },
-  { dx: 8,  dy: 8,  opacity: 0.80, zIndex: 30 },
-  { dx: 16, dy: 16, opacity: 0.60, zIndex: 20 },
-  { dx: 24, dy: 24, opacity: 0.40, zIndex: 10 },
+  { top: 0,  left: 0,  zIndex: 4, opacity: 1.00 }, // index 0 — front
+  { top: 8,  left: 8,  zIndex: 3, opacity: 0.80 }, // index 1
+  { top: 16, left: 16, zIndex: 2, opacity: 0.65 }, // index 2
+  { top: 24, left: 24, zIndex: 1, opacity: 0.50 }, // index 3 — back
 ] as const
 
 // ── Envelope icon ─────────────────────────────────────────────────────────────
 
 function EnvelopeIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
       <rect x="1" y="3" width="14" height="10" rx="1.5"
         stroke="rgba(255,255,255,0.75)" strokeWidth="1.2" />
       <path d="M1.5 3.5L8 9L14.5 3.5"
@@ -45,156 +42,40 @@ function EnvelopeIcon() {
   )
 }
 
-// ── Single card ───────────────────────────────────────────────────────────────
+// ── Card face (shared between back cards and front card) ──────────────────────
 
-interface StackCardProps {
-  invoice: Invoice
-  stackIndex: number
-  showEmail: boolean
-  paidPhase: PaidPhase
-  prefersReduced: boolean
-}
-
-function StackCard({ invoice, stackIndex, showEmail, paidPhase, prefersReduced }: StackCardProps) {
-  const cfg = STACK[stackIndex]
-  const isTop = stackIndex === 0
-  const slidingOut = isTop && (paidPhase === 'slide' || paidPhase === 'reset')
-
+function CardFace({ invoice }: { invoice: Invoice }) {
   return (
-    <motion.div
-      // Start at the correct stacked position immediately (no initial entrance animation)
-      initial={{ x: cfg.dx, y: cfg.dy, opacity: cfg.opacity }}
-      animate={
-        prefersReduced
-          ? { x: cfg.dx, y: cfg.dy, opacity: cfg.opacity }
-          : slidingOut
-          ? { x: cfg.dx + 280, y: cfg.dy - 20, opacity: 0 }
-          : { x: cfg.dx, y: cfg.dy, opacity: cfg.opacity }
-      }
-      transition={
-        slidingOut
-          ? { duration: 0.5, ease: [0.4, 0, 1, 1] }
-          : { duration: 0.4, ease: [0.22, 1, 0.36, 1] }
-      }
+    <div
       style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: '100%',
-        zIndex: cfg.zIndex,
-        willChange: 'transform, opacity',
+        width: 280,
+        background: 'linear-gradient(135deg, #0f0f23 0%, #13132b 100%)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 16,
+        padding: 20,
+        boxShadow: '0 25px 50px rgba(0,0,0,0.6)',
       }}
     >
-      <div
-        style={{
-          background: 'linear-gradient(135deg, #0f0f23 0%, #13132b 100%)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: 16,
-          padding: 20,
-          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.05)',
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
-        {/* Paid overlay */}
-        <AnimatePresence>
-          {isTop && (paidPhase === 'overlay' || paidPhase === 'stamp' || paidPhase === 'slide') && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              style={{
-                position: 'absolute', inset: 0, borderRadius: 16,
-                background: 'rgba(34,197,94,0.18)', zIndex: 10,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-            >
-              <AnimatePresence>
-                {(paidPhase === 'stamp' || paidPhase === 'slide') && (
-                  <motion.div
-                    initial={{ scale: 0, rotate: -12 }}
-                    animate={{ scale: [0, 1.1, 1], rotate: -12 }}
-                    exit={{ scale: 0, opacity: 0 }}
-                    transition={{ duration: 0.3, ease: 'easeOut' }}
-                    style={{
-                      border: '2px solid rgba(74,222,128,0.6)',
-                      borderRadius: 4, padding: '6px 12px',
-                      color: '#4ade80', fontSize: 14,
-                      fontWeight: 700, letterSpacing: '0.1em',
-                    }}
-                  >
-                    ✓ PAID
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Flying envelope */}
-        {isTop && !prefersReduced && (
-          <AnimatePresence>
-            {showEmail && (
-              <motion.div
-                key="env"
-                initial={{ opacity: 0, x: 0, y: 0, scale: 0.5 }}
-                animate={{
-                  opacity: [0, 1, 1, 0],
-                  x: [0, 40, 80],
-                  y: [0, -30, -70],
-                  scale: [0.5, 1, 0.8],
-                }}
-                transition={{ duration: 1, ease: 'easeOut' }}
-                style={{
-                  position: 'absolute', top: 8, right: 8,
-                  zIndex: 20, pointerEvents: 'none',
-                }}
-              >
-                <EnvelopeIcon />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        )}
-
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', letterSpacing: '0.2em', fontWeight: 500 }}>
-            INVOICE
-          </span>
-          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace' }}>
-            {invoice.number}
-          </span>
-        </div>
-
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.04)', margin: '12px 0' }} />
-
-        <p style={{ fontSize: 14, fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>
-          {invoice.name}
-        </p>
-        <p style={{ fontSize: 28, fontWeight: 700, color: 'white', marginTop: 4, textShadow: '0 0 20px rgba(255,255,255,0.1)' }}>
-          {invoice.amount}
-        </p>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-          <span
-            className="animate-pulse"
-            style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444', flexShrink: 0, display: 'inline-block' }}
-          />
-          <span style={{ fontSize: 11, color: '#f87171', fontWeight: 500 }}>
-            {invoice.days} days overdue
-          </span>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
-          <span style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', padding: '4px 10px', borderRadius: 999 }}>
-            OVERDUE
-          </span>
-          <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'linear-gradient(135deg, #7c3aed, #9333ea)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: 'white' }}>
-            A
-          </div>
+      <div className="flex justify-between items-center">
+        <span className="text-[10px] text-gray-600 uppercase tracking-widest">INVOICE</span>
+        <span className="text-[10px] text-gray-500 font-mono">{invoice.number}</span>
+      </div>
+      <div className="border-t border-white/5 my-3" />
+      <p className="text-sm font-semibold text-white/90">{invoice.name}</p>
+      <p className="text-3xl font-bold text-white mt-1">{invoice.amount}</p>
+      <div className="flex items-center gap-2 mt-2">
+        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
+        <span className="text-xs text-red-400">{invoice.days} days overdue</span>
+      </div>
+      <div className="flex justify-between items-center mt-4">
+        <span className="bg-red-500/15 border border-red-500/20 text-red-400 text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full">
+          OVERDUE
+        </span>
+        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-[10px] font-bold text-white">
+          A
         </div>
       </div>
-    </motion.div>
+    </div>
   )
 }
 
@@ -205,30 +86,24 @@ export function InvoiceStack() {
   const [showEmail, setShowEmail] = useState(false)
   const [paidPhase, setPaidPhase] = useState<PaidPhase>(null)
   const paidIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const [isMobile, setIsMobile] = useState(false)
-
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 1024)
-    check()
-    window.addEventListener('resize', check)
-    return () => window.removeEventListener('resize', check)
-  }, [])
 
   useEffect(() => {
     if (prefersReduced) return
 
+    // Envelope flies out every 2500ms
     const emailId = setInterval(() => {
       setShowEmail(true)
       setTimeout(() => setShowEmail(false), 1200)
     }, 2500)
 
+    // Paid stamp sequence
     const runPaid = () => {
-      setPaidPhase('overlay')
-      setTimeout(() => setPaidPhase('stamp'),  400)
-      setTimeout(() => setPaidPhase('slide'),  700)
-      setTimeout(() => setPaidPhase('reset'),  1200)
-      setTimeout(() => setPaidPhase('fadein'), 2000)
-      setTimeout(() => setPaidPhase(null),     2500)
+      setPaidPhase('overlay')                             // 0ms:    green wash
+      setTimeout(() => setPaidPhase('stamp'),  400)       // 400ms:  PAID stamp
+      setTimeout(() => setPaidPhase('slide'),  800)       // 800ms:  slide out
+      setTimeout(() => setPaidPhase('reset'),  1300)      // 1300ms: hold off-screen
+      setTimeout(() => setPaidPhase('fadein'), 1600)      // 1600ms: fade back in
+      setTimeout(() => setPaidPhase(null),     2100)      // 2100ms: idle
     }
 
     const delayId = setTimeout(() => {
@@ -243,76 +118,162 @@ export function InvoiceStack() {
     }
   }, [prefersReduced])
 
-  const cardW = isMobile ? 240 : 300
-  // Container must be wide enough to show all 4 cards including the rightmost offset (24px)
-  const containerW = cardW + 50
-  const containerH = isMobile ? 340 : 420
-
   return (
-    <div
-      className="relative"
-      style={{ width: containerW, height: containerH }}
-    >
-      {/* Purple glow */}
-      <motion.div
-        animate={prefersReduced ? {} : { opacity: [0.6, 1, 0.6] }}
-        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+    // Fixed container — 300×420px gives room for 280px card + 24px back-card offsets
+    <div style={{ position: 'relative', width: 300, height: 420 }}>
+
+      {/* Purple glow behind stack */}
+      <div
         aria-hidden
         style={{
-          position: 'absolute', width: 500, height: 400,
-          background: 'radial-gradient(ellipse, rgba(124,58,237,0.2) 0%, transparent 70%)',
-          filter: 'blur(40px)', zIndex: 0,
-          top: '50%', left: '50%',
+          position: 'absolute',
+          width: 400,
+          height: 350,
+          background: 'radial-gradient(ellipse, rgba(124,58,237,0.2), transparent 70%)',
+          filter: 'blur(40px)',
+          zIndex: 0,
+          top: '50%',
+          left: '50%',
           transform: 'translate(-50%, -50%)',
           pointerEvents: 'none',
         }}
       />
 
-      {/* Perspective + overall tilt */}
-      <div
-        style={{
-          perspective: 1200,
-          position: 'relative',
-          zIndex: 1,
-          paddingTop: isMobile ? 30 : 50,
-          width: '100%',
-        }}
-      >
-        <div
-          style={{
-            transform: isMobile ? 'none' : 'rotateX(10deg) rotateY(-18deg)',
-          }}
-        >
-          {/* Floating up/down animation */}
-          <motion.div
-            animate={prefersReduced ? {} : { y: [0, -14, 0] }}
-            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+      {/* ── Back cards (indices 3, 2, 1) — plain divs, no JS animation ── */}
+      {([3, 2, 1] as const).map(idx => {
+        const pos = STACK[idx]
+        return (
+          <div
+            key={INVOICES[idx].number}
             style={{
-              position: 'relative',
-              height: 220,
-              width: cardW,
-              willChange: 'transform',
+              position: 'absolute',
+              top: pos.top,
+              left: pos.left,
+              zIndex: pos.zIndex,
+              opacity: pos.opacity,
             }}
           >
-            {/*
-              Render from index 3 (back) down to 0 (front).
-              The front card (index 0) is last in the DOM and therefore
-              paints on top. Combined with explicit z-index this is
-              robust across all browsers.
-            */}
-            {[3, 2, 1, 0].map(idx => (
-              <StackCard
-                key={INVOICES[idx].number}
-                invoice={INVOICES[idx]}
-                stackIndex={idx}
-                showEmail={showEmail && idx === 0}
-                paidPhase={idx === 0 ? paidPhase : null}
-                prefersReduced={!!prefersReduced}
-              />
-            ))}
-          </motion.div>
-        </div>
-      </div>
+            <CardFace invoice={INVOICES[idx]} />
+          </div>
+        )
+      })}
+
+      {/* ── Front card (index 0) — animated ── */}
+      {/*
+        Slide animation uses framer-motion `x`.
+        CSS `top/left` positions the card in the stack (doesn't conflict with x).
+
+        Phase states:
+          null / overlay / stamp  → x:0, opacity:1  (visible, in place)
+          slide                   → x:220, opacity:0 (slides right + fades)
+          reset                   → x:220, opacity:0 (stays off-screen)
+          fadein                  → x:0, opacity:1   (snaps to x:0, fades in)
+
+        The snap-back during fadein is achieved with per-property transition:
+          x  → duration:0   (instant)
+          opacity → duration:0.4 (smooth fade)
+      */}
+      <motion.div
+        initial={{ x: 0, opacity: 1 }}
+        animate={
+          prefersReduced
+            ? { x: 0, opacity: 1 }
+            : paidPhase === 'slide'
+            ? { x: 220, opacity: 0 }
+            : paidPhase === 'reset'
+            ? { x: 220, opacity: 0 }
+            : paidPhase === 'fadein'
+            ? {
+                x: 0,
+                opacity: 1,
+                transition: { x: { duration: 0 }, opacity: { duration: 0.4 } },
+              }
+            : { x: 0, opacity: 1 }
+        }
+        transition={
+          paidPhase === 'slide'
+            ? { duration: 0.5, ease: [0.4, 0, 1, 1] }
+            : { duration: 0.4 }
+        }
+        style={{
+          position: 'absolute',
+          top: STACK[0].top,
+          left: STACK[0].left,
+          zIndex: STACK[0].zIndex,
+        }}
+      >
+        {/* Float animation */}
+        <motion.div
+          animate={prefersReduced ? {} : { y: [0, -12, 0] }}
+          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+          style={{ position: 'relative' }}
+        >
+          {/* Paid overlay */}
+          <AnimatePresence>
+            {(paidPhase === 'overlay' || paidPhase === 'stamp' || paidPhase === 'slide') && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  borderRadius: 16,
+                  background: 'rgba(34,197,94,0.2)',
+                  zIndex: 10,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <AnimatePresence>
+                  {(paidPhase === 'stamp' || paidPhase === 'slide') && (
+                    <motion.div
+                      initial={{ scale: 0, rotate: -12 }}
+                      animate={{ scale: 1, rotate: -12 }}
+                      exit={{ scale: 0, opacity: 0 }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                      className="text-green-400 text-base font-bold border-2 border-green-400/60 rounded px-3 py-1.5"
+                    >
+                      ✓ PAID
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Flying envelope */}
+          {!prefersReduced && (
+            <AnimatePresence>
+              {showEmail && (
+                <motion.div
+                  key="env"
+                  initial={{ opacity: 0, x: 0, y: 0, scale: 0.5 }}
+                  animate={{
+                    opacity: [0, 1, 1, 0],
+                    x: [0, 30, 70],
+                    y: [0, -20, -60],
+                    scale: [0.5, 1, 0.7],
+                  }}
+                  transition={{ duration: 1, ease: 'easeOut' }}
+                  style={{
+                    position: 'absolute',
+                    top: 8,
+                    right: 8,
+                    zIndex: 20,
+                    pointerEvents: 'none',
+                  }}
+                >
+                  <EnvelopeIcon />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          )}
+
+          <CardFace invoice={INVOICES[0]} />
+        </motion.div>
+      </motion.div>
     </div>
   )
 }

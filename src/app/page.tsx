@@ -58,13 +58,14 @@ function ScrollProgressBar() {
   const [progress, setProgress] = useState(0)
 
   useEffect(() => {
-    const update = () => {
-      const scrolled = window.scrollY
-      const total = document.documentElement.scrollHeight - window.innerHeight
-      setProgress(total > 0 ? scrolled / total : 0)
+    const handleScroll = () => {
+      const el = document.documentElement
+      const scrollTop = el.scrollTop || document.body.scrollTop
+      const scrollHeight = el.scrollHeight - el.clientHeight
+      setProgress(scrollHeight > 0 ? scrollTop / scrollHeight : 0)
     }
-    window.addEventListener('scroll', update, { passive: true })
-    return () => window.removeEventListener('scroll', update)
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
   return (
@@ -74,8 +75,8 @@ function ScrollProgressBar() {
         position: 'fixed',
         top: 0,
         left: 0,
-        zIndex: 100,
-        height: 2,
+        zIndex: 200,
+        height: 3,
         width: `${progress * 100}%`,
         background: 'linear-gradient(to right, #3b82f6, #7c3aed)',
         borderRadius: '0 9999px 9999px 0',

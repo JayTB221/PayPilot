@@ -21,6 +21,8 @@ export function Particles() {
   const rafRef = useRef<number>(0)
 
   useEffect(() => {
+    console.log('Particles mounted')
+
     if (prefersReduced) return
     const canvas = canvasRef.current
     if (!canvas) return
@@ -34,15 +36,15 @@ export function Particles() {
     resize()
     window.addEventListener('resize', resize)
 
-    // Generate 35 particles
-    particlesRef.current = Array.from({ length: 35 }, () => {
+    // 40 particles, more visible than before
+    particlesRef.current = Array.from({ length: 40 }, () => {
       const isBlue = Math.random() > 0.5
       return {
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
-        size: Math.random() * 1.5 + 1,
+        size: Math.random() * 1.5 + 1.5,      // 1.5–3px
         speed: Math.random() * 0.3 + 0.1,
-        opacity: Math.random() * 0.25 + 0.1,
+        opacity: Math.random() * 0.3 + 0.2,   // 0.2–0.5
         r: isBlue ? 59 : 124,
         g: isBlue ? 130 : 58,
         b: isBlue ? 246 : 237,
@@ -80,8 +82,11 @@ export function Particles() {
       aria-hidden
       style={{
         position: 'fixed',
-        inset: 0,
-        zIndex: 0,
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        zIndex: 1,
         pointerEvents: 'none',
       }}
     />

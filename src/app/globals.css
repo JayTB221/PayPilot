@@ -43,13 +43,19 @@
 }
 
 @keyframes buttonPulse {
-  0%   { transform: scale(1);    opacity: 0.5; }
-  100% { transform: scale(1.18); opacity: 0;   }
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.2);
+    opacity: 0;
+  }
 }
 
 .animate-gradient-text {
   background-size: 300% 300%;
-  animation: gradientShift 4s ease infinite;
+  animation: gradientShift 3s ease infinite;
 }
 
 .animate-gradient-border {
@@ -57,21 +63,27 @@
   animation: gradientBorder 4s linear infinite;
 }
 
-/* Hero headline gradient — applied as a class so bg-clip-text works */
+/* Hero headline: 4-stop gradient with pink for visible colour shift */
 .gradient-hero-text {
-  background: linear-gradient(135deg, #60a5fa, #a78bfa, #60a5fa, #818cf8);
+  background: linear-gradient(
+    135deg,
+    #60a5fa,
+    #a78bfa,
+    #f472b6,
+    #60a5fa
+  );
   background-size: 300% 300%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  animation: gradientShift 4s ease infinite;
+  animation: gradientShift 3s ease infinite;
 }
 
 .pulse-ring {
   position: absolute;
   inset: 0;
   border-radius: 0.75rem;
-  border: 1.5px solid rgba(59, 130, 246, 0.4);
+  border: 2px solid rgba(59, 130, 246, 0.5);
   animation: buttonPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   pointer-events: none;
 }
